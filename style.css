@@ -1007,6 +1007,14 @@ body {
     background: #fff;
 }
 
+/* Native <option> popups are rendered by the browser/OS with a light
+   background regardless of page theme, so force dark, readable text
+   on them explicitly instead of inheriting the select's light color. */
+.form-group select option {
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
 .form-group input:focus, 
 .form-group select:focus {
     outline: none;
