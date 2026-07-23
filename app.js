@@ -20,6 +20,11 @@ const categoriesConfig = {
     ]
 };
 
+// --- Supabase Client ---
+const SUPABASE_URL = 'https://jcwzgzwnwwaypshfchfs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_FZyfUSZPyfFULmP17qvSDg_jT-ScqGg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // --- Application State ---
 let transactions = [];
 let goals = [];
@@ -115,7 +120,7 @@ function formatDateString(dateStr) {
 }
 
 // --- Sample Data Generator ---
-function loadSampleData() {
+async function loadSampleData() {
     const now = new Date();
     
     // Helper to generate ISO Date strings relative to today
@@ -182,16 +187,11 @@ function loadSampleData() {
         { id: 'g3', name: 'Laptop Pro Nueva', target: 1800, current: 400 }
     ];
 
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-    localStorage.setItem('goals', JSON.stringify(goals));
+    await sb.from('transactions').insert(transactions);
+    await sb.from('goals').insert(goals);
 }
 
 // --- Data Operations & Math ---
-
-function saveState() {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-    localStorage.setItem('goals', JSON.stringify(goals));
-}
 
 function calculateKPIs() {
     let totalIncome = 0;
@@ -367,11 +367,15 @@ function deleteTransaction(id) {
     const itemEl = document.querySelector(`.transaction-item[data-id="${id}"]`);
     if (itemEl) {
         itemEl.classList.add('item-exit');
-        
+
         // Wait for animation to finish
-        itemEl.addEventListener('animationend', () => {
+        itemEl.addEventListener('animationend', async () => {
+            const { error } = await sb.from('transactions').delete().eq('id', id);
+            if (error) {
+                showToast('Error al eliminar la transacción', 'danger');
+                return;
+            }
             transactions = transactions.filter(t => t.id !== id);
-            saveState();
             calculateKPIs();
             renderTransactions();
             updateCharts();
@@ -430,7 +434,7 @@ function renderGoals() {
 }
 
 // Add funds to a savings goal
-window.addFundsToGoal = function(id) {
+window.addFundsToGoal = async function(id) {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
 
@@ -444,13 +448,7 @@ window.addFundsToGoal = function(id) {
     }
 
     // Verify if we have sufficient general balance or just add to goal anyway
-    goal.current += funds;
-    if (goal.current > goal.target) {
-        goal.current = goal.target; // Cap it
-        showToast(`¡Felicidades! Completaste tu meta: "${goal.name}"`, 'success');
-    } else {
-        showToast(`Se abonaron ${formatCurrency(funds)} a la meta "${goal.name}"`, 'success');
-    }
+    const newCurrent = Math.min(goal.current + funds, goal.target);
 
     // Register a matching savings expense transaction to deduct from general balance
     const newTx = {
@@ -461,9 +459,23 @@ window.addFundsToGoal = function(id) {
         date: new Date().toISOString().split('T')[0],
         description: `Ahorro meta: ${goal.name}`
     };
+
+    const { error: goalError } = await sb.from('goals').update({ current: newCurrent }).eq('id', id);
+    const { error: txError } = await sb.from('transactions').insert(newTx);
+    if (goalError || txError) {
+        showToast('Error al abonar a la meta', 'danger');
+        return;
+    }
+
+    goal.current = newCurrent;
+    if (goal.current >= goal.target) {
+        showToast(`¡Felicidades! Completaste tu meta: "${goal.name}"`, 'success');
+    } else {
+        showToast(`Se abonaron ${formatCurrency(funds)} a la meta "${goal.name}"`, 'success');
+    }
+
     transactions.push(newTx);
 
-    saveState();
     calculateKPIs();
     renderTransactions();
     renderGoals();
@@ -471,10 +483,14 @@ window.addFundsToGoal = function(id) {
 };
 
 // Delete Goal
-window.deleteGoal = function(id) {
+window.deleteGoal = async function(id) {
     if (confirm('¿Estás seguro de que deseas eliminar esta meta de ahorro?')) {
+        const { error } = await sb.from('goals').delete().eq('id', id);
+        if (error) {
+            showToast('Error al eliminar la meta', 'danger');
+            return;
+        }
         goals = goals.filter(g => g.id !== id);
-        saveState();
         renderGoals();
         showToast('Meta eliminada', 'info');
     }
@@ -770,7 +786,7 @@ function setTodayDate() {
 }
 
 // --- Initializing App ---
-function init() {
+async function init() {
     // 1. Theme Configuration
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
@@ -784,15 +800,19 @@ function init() {
     // Set form date default to today
     dateInput.value = new Date().toISOString().split('T')[0];
 
-    // 2. Fetch Data from LocalStorage or Load Samples
-    const storedTx = localStorage.getItem('transactions');
-    const storedGoals = localStorage.getItem('goals');
-    
-    if (!storedTx || JSON.parse(storedTx).length === 0) {
-        loadSampleData();
+    // 2. Fetch Data from Supabase or Load Samples
+    const { data: txData, error: txError } = await sb.from('transactions').select('*');
+    const { data: goalsData, error: goalsError } = await sb.from('goals').select('*');
+
+    if (txError || goalsError) {
+        showToast('Error al conectar con la base de datos', 'danger');
+    }
+
+    if (!txData || txData.length === 0) {
+        await loadSampleData();
     } else {
-        transactions = JSON.parse(storedTx);
-        goals = JSON.parse(storedGoals) || [];
+        transactions = txData.map(t => ({ ...t, amount: parseFloat(t.amount) }));
+        goals = (goalsData || []).map(g => ({ ...g, target: parseFloat(g.target), current: parseFloat(g.current) }));
     }
 
     // Populate default categories
@@ -827,9 +847,9 @@ typeIncomeRadio.addEventListener('change', () => {
 });
 
 // Transaction Form Submit
-transactionForm.addEventListener('submit', (e) => {
+transactionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const amountVal = parseFloat(amountInput.value);
     const categoryVal = categorySelect.value;
     const dateVal = dateInput.value;
@@ -851,8 +871,13 @@ transactionForm.addEventListener('submit', (e) => {
         description: descVal
     };
 
+    const { error } = await sb.from('transactions').insert(newTx);
+    if (error) {
+        showToast('Error al registrar la transacción', 'danger');
+        return;
+    }
+
     transactions.push(newTx);
-    saveState();
     calculateKPIs();
     renderTransactions();
     updateCharts();
@@ -900,7 +925,7 @@ btnCancelGoal.addEventListener('click', () => {
 });
 
 // Goal Form Submit
-goalForm.addEventListener('submit', (e) => {
+goalForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const name = document.getElementById('goal-name').value.trim();
@@ -919,8 +944,13 @@ goalForm.addEventListener('submit', (e) => {
         current: Math.min(current, target)
     };
 
+    const { error } = await sb.from('goals').insert(newGoal);
+    if (error) {
+        showToast('Error al crear la meta', 'danger');
+        return;
+    }
+
     goals.push(newGoal);
-    saveState();
     renderGoals();
 
     goalForm.reset();
