@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Daniela - Dashboard de Control de Gastos e Ingresos</title>
-    <meta name="description" content="Gestiona tus ingresos, gastos y metas financieras de manera sencilla y con gráficos interactivos modernos.">
+    <title>Control de Gastos del Hogar - David & Daniela</title>
+    <meta name="description" content="Control semanal de gastos compartidos, reembolsos y créditos a tasa cero.">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,30 +24,30 @@
         <aside class="sidebar">
             <div class="brand">
                 <div class="brand-logo">
-                    <i data-lucide="sparkles"></i>
+                    <i data-lucide="home"></i>
                 </div>
-                <h1>Finanzas Daniela</h1>
+                <h1>Gastos del Hogar</h1>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" id="nav-dashboard">
+                <a href="#" class="nav-item active" data-page="dashboard">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="#section-transactions" class="nav-item" id="nav-transactions">
-                    <i data-lucide="arrow-left-right"></i>
-                    <span>Transacciones</span>
+                <a href="#" class="nav-item" data-page="gastos">
+                    <i data-lucide="receipt"></i>
+                    <span>Gastos del Hogar</span>
                 </a>
-                <a href="#section-goals" class="nav-item" id="nav-goals">
-                    <i data-lucide="target"></i>
-                    <span>Metas</span>
+                <a href="#" class="nav-item" data-page="creditos">
+                    <i data-lucide="credit-card"></i>
+                    <span>Créditos Tasa 0%</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-profile">
-                    <div class="user-avatar">D</div>
+                    <div class="user-avatar">DD</div>
                     <div class="user-info">
-                        <span class="user-name">Daniela</span>
-                        <span class="user-role">Administradora</span>
+                        <span class="user-name">David & Daniela</span>
+                        <span class="user-role">Control Semanal</span>
                     </div>
                 </div>
             </div>
@@ -59,227 +59,351 @@
             <header class="main-header">
                 <div class="header-title">
                     <span class="date-today" id="current-date">Cargando fecha...</span>
-                    <h2>¡Hola, Daniela!</h2>
-                    <p class="subtitle">Aquí tienes el resumen de tus finanzas para hoy.</p>
+                    <h2 id="page-title">Resumen Semanal</h2>
+                    <p class="subtitle" id="page-subtitle">Control de gastos compartidos y reembolsos pendientes</p>
                 </div>
                 <div class="header-actions">
                     <button class="theme-toggle" id="theme-btn" aria-label="Cambiar tema">
                         <i data-lucide="moon" id="theme-icon"></i>
                     </button>
-                    <button class="btn-primary" id="btn-quick-transaction" onclick="document.getElementById('amount-input').focus();">
-                        <i data-lucide="plus"></i>
-                        <span>Nueva Transacción</span>
-                    </button>
                 </div>
             </header>
 
-            <!-- Cards Grid: Stats Summary -->
-            <section class="stats-grid">
-                <!-- Card 1: Balance -->
-                <div class="stat-card balance-card">
-                    <div class="stat-icon-wrapper">
-                        <i data-lucide="wallet"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Saldo General</span>
-                        <h3 class="stat-value" id="total-balance">$0.00</h3>
-                        <span class="stat-trend trend-neutral" id="balance-trend">
-                            <i data-lucide="activity"></i> En balance
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Card 2: Ingresos -->
-                <div class="stat-card income-card">
-                    <div class="stat-icon-wrapper">
-                        <i data-lucide="trending-up"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Total Ingresos</span>
-                        <h3 class="stat-value text-success" id="total-income">$0.00</h3>
-                        <span class="stat-trend trend-up" id="income-percentage">
-                            <i data-lucide="arrow-up-right"></i> +0% este mes
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Card 3: Gastos -->
-                <div class="stat-card expense-card">
-                    <div class="stat-icon-wrapper">
-                        <i data-lucide="trending-down"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Total Gastos</span>
-                        <h3 class="stat-value text-danger" id="total-expense">$0.00</h3>
-                        <span class="stat-trend trend-down" id="expense-percentage">
-                            <i data-lucide="arrow-down-right"></i> 0% del ingreso
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Card 4: Ahorro -->
-                <div class="stat-card savings-card">
-                    <div class="stat-icon-wrapper">
-                        <i data-lucide="piggy-bank"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Tasa de Ahorro</span>
-                        <h3 class="stat-value text-primary" id="savings-rate">0%</h3>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" id="savings-bar" style="width: 0%"></div>
+            <!-- ================= PAGE: DASHBOARD ================= -->
+            <div class="page-view" id="page-dashboard">
+                <!-- KPI Cards -->
+                <section class="stats-grid">
+                    <div class="stat-card balance-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="calendar-days"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Gastos Semana Actual</span>
+                            <h3 class="stat-value" id="kpi-semana">₡0.00</h3>
+                            <span class="stat-trend trend-neutral"><i data-lucide="activity"></i> Lunes a Domingo</span>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <!-- Charts Section -->
-            <section class="charts-section">
-                <!-- Chart 1: Cash Flow Line Chart -->
-                <div class="chart-card large-chart">
-                    <div class="chart-header">
-                        <h4>Flujo de Caja Mensual</h4>
-                        <div class="chart-actions">
-                            <span class="chart-legend-item"><span class="legend-color bg-success"></span>Ingresos</span>
-                            <span class="chart-legend-item"><span class="legend-color bg-danger"></span>Gastos</span>
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="scale"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Saldo Neto David / Daniela</span>
+                            <h3 class="stat-value" id="kpi-saldo-neto">₡0.00</h3>
+                            <span class="stat-trend trend-neutral" id="kpi-saldo-detalle">Sin pendientes</span>
                         </div>
                     </div>
-                    <div class="chart-wrapper">
-                        <canvas id="cashflow-chart"></canvas>
-                    </div>
-                </div>
 
-                <!-- Chart 2: Category Doughnut Chart -->
-                <div class="chart-card small-chart">
-                    <div class="chart-header">
-                        <h4>Distribución de Gastos</h4>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="category-chart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Split Section (Form & Transactions) -->
-            <div class="split-section">
-                <!-- Column Left: Transactions History -->
-                <section class="content-panel transactions-panel" id="section-transactions">
-                    <div class="panel-header">
-                        <div class="panel-title-area">
-                            <h4>Historial de Transacciones</h4>
-                            <p class="panel-subtitle">Lista detallada de tus movimientos financieros</p>
+                    <div class="stat-card expense-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="credit-card"></i>
                         </div>
-                        <div class="panel-filters">
-                            <div class="search-box">
-                                <i data-lucide="search"></i>
-                                <input type="text" id="search-input" placeholder="Buscar transacción...">
-                            </div>
-                            <div class="filter-buttons">
-                                <button class="filter-btn active" data-filter="all">Todos</button>
-                                <button class="filter-btn" data-filter="income">Ingresos</button>
-                                <button class="filter-btn" data-filter="expense">Gastos</button>
-                            </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Tarjeta Crédito Pendiente</span>
+                            <h3 class="stat-value text-danger" id="kpi-credito-pendiente">₡0.00</h3>
+                            <span class="stat-trend trend-down"><i data-lucide="arrow-down-right"></i> Por procesar</span>
                         </div>
                     </div>
-                    <div class="transactions-list-wrapper">
-                        <ul class="transactions-list" id="transactions-list">
-                            <!-- Items will be generated dynamically -->
-                        </ul>
+
+                    <div class="stat-card savings-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Gastos del Mes</span>
+                            <h3 class="stat-value text-primary" id="kpi-mes">₡0.00</h3>
+                            <span class="stat-trend trend-neutral" id="kpi-mes-detalle">Mes en curso</span>
+                        </div>
                     </div>
                 </section>
 
-                <!-- Column Right: Form & Savings Goals -->
-                <div class="right-column">
-                    <!-- Form: Add Transaction -->
-                    <section class="content-panel form-panel">
-                        <div class="panel-header">
-                            <h4>Nueva Transacción</h4>
-                        </div>
-                        <form id="transaction-form" class="transaction-form">
-                            <!-- Tab/Toggle for Type -->
-                            <div class="type-toggle-wrapper">
-                                <input type="radio" id="type-expense" name="transaction-type" value="expense" checked>
-                                <label for="type-expense" class="type-label expense-label">
-                                    <i data-lucide="minus-circle"></i> Gasto
-                                </label>
-
-                                <input type="radio" id="type-income" name="transaction-type" value="income">
-                                <label for="type-income" class="type-label income-label">
-                                    <i data-lucide="plus-circle"></i> Ingreso
-                                </label>
+                <!-- Charts Row 1 -->
+                <section class="charts-section">
+                    <div class="chart-card large-chart">
+                        <div class="chart-header">
+                            <h4>Tendencia de Gastos</h4>
+                            <div class="filter-buttons" id="trend-range-toggle">
+                                <button class="filter-btn active" data-range="weekly">Semanal</button>
+                                <button class="filter-btn" data-range="monthly">Mensual</button>
                             </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="trend-chart"></canvas>
+                        </div>
+                    </div>
 
-                            <div class="form-row">
-                                <div class="form-group amount-group">
-                                    <label for="amount-input">Monto ($)</label>
-                                    <div class="amount-input-wrapper">
-                                        <span class="currency-symbol">$</span>
-                                        <input type="number" id="amount-input" step="0.01" min="0.01" required placeholder="0.00">
+                    <div class="chart-card small-chart">
+                        <div class="chart-header">
+                            <h4>Por Tipo (Semana Actual)</h4>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="tipo-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Charts Row 2 -->
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4>Por Persona (Semana Actual)</h4>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="persona-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4>Tarjeta de Crédito Pendiente por Persona</h4>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="credito-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pending Analysis -->
+                <section class="content-panel">
+                    <div class="panel-header">
+                        <div class="panel-title-area">
+                            <h4>Análisis de Pendientes</h4>
+                            <p class="panel-subtitle">Gastos sin procesar. Al procesarlos se registra usuario, fecha y comentario.</p>
+                        </div>
+                        <button class="btn-primary" id="btn-process-all">
+                            <i data-lucide="check-check"></i>
+                            <span>Procesar Todos</span>
+                        </button>
+                    </div>
+                    <div class="transactions-list-wrapper">
+                        <ul class="transactions-list" id="pending-list"></ul>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ================= PAGE: GASTOS ================= -->
+            <div class="page-view hidden" id="page-gastos">
+                <div class="split-section">
+                    <!-- Column Left: History -->
+                    <section class="content-panel transactions-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-area">
+                                <h4>Historial de Gastos</h4>
+                                <p class="panel-subtitle">Todos los gastos registrados</p>
+                            </div>
+                            <div class="panel-filters">
+                                <div class="search-box">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" id="gasto-search" placeholder="Buscar gasto...">
+                                </div>
+                                <div class="filter-buttons" id="gasto-estado-filter">
+                                    <button class="filter-btn active" data-filter="all">Todos</button>
+                                    <button class="filter-btn" data-filter="Pendiente">Pendientes</button>
+                                    <button class="filter-btn" data-filter="Procesado">Procesados</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="transactions-list-wrapper">
+                            <ul class="transactions-list" id="gastos-list"></ul>
+                        </div>
+                    </section>
+
+                    <!-- Column Right: Form -->
+                    <div class="right-column">
+                        <section class="content-panel form-panel">
+                            <div class="panel-header">
+                                <h4>Nuevo Gasto</h4>
+                            </div>
+                            <form id="gasto-form" class="transaction-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="gasto-moneda">Moneda</label>
+                                        <select id="gasto-moneda">
+                                            <option value="CRC" selected>Colones (CRC)</option>
+                                            <option value="USD">Dólares (USD)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="gasto-tipo">Tipo</label>
+                                        <select id="gasto-tipo">
+                                            <option value="Comida">Comida</option>
+                                            <option value="Transporte">Transporte</option>
+                                            <option value="Viaje">Viaje</option>
+                                            <option value="Gasolina">Gasolina</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="form-row">
+                                <div class="form-group amount-group">
+                                    <label for="gasto-monto">Monto</label>
+                                    <div class="amount-input-wrapper">
+                                        <span class="currency-symbol" id="gasto-currency-symbol">₡</span>
+                                        <input type="number" id="gasto-monto" step="0.01" min="0.01" required placeholder="0.00">
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
-                                    <label for="category-select">Categoría</label>
-                                    <select id="category-select" required>
-                                        <!-- Categories will depend on type and will be updated dynamically -->
+                                    <label for="gasto-detalle">Detalle</label>
+                                    <input type="text" id="gasto-detalle" required placeholder="Ej. Supermercado semanal">
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="gasto-quien">Quién realizó el gasto</label>
+                                        <select id="gasto-quien">
+                                            <option value="David">David</option>
+                                            <option value="Daniela">Daniela</option>
+                                            <option value="Otro">Otro...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group hidden" id="gasto-quien-otro-wrapper">
+                                        <label for="gasto-quien-otro">Nombre</label>
+                                        <input type="text" id="gasto-quien-otro" placeholder="Nombre de la persona">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="gasto-cuenta">Cuenta Utilizada</label>
+                                        <select id="gasto-cuenta">
+                                            <option value="Daniela">Daniela</option>
+                                            <option value="David">David</option>
+                                            <option value="DyD">DyD</option>
+                                            <option value="Crédito">Crédito</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="gasto-pct-wrapper">
+                                        <label for="gasto-pct">% a Reembolsar</label>
+                                        <input type="number" id="gasto-pct" min="0" max="100" step="1" value="50">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn-submit">
+                                    <i data-lucide="plus"></i> Registrar Gasto
+                                </button>
+                            </form>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= PAGE: CREDITOS TASA 0% ================= -->
+            <div class="page-view hidden" id="page-creditos">
+                <div class="split-section">
+                    <!-- Column Left: List -->
+                    <section class="content-panel transactions-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-area">
+                                <h4>Créditos a Tasa 0%</h4>
+                                <p class="panel-subtitle">Control de cuotas y saldo pendiente</p>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="creditos-list"></div>
+                    </section>
+
+                    <!-- Column Right: Form -->
+                    <div class="right-column">
+                        <section class="content-panel form-panel">
+                            <div class="panel-header">
+                                <h4>Nuevo Crédito</h4>
+                            </div>
+                            <form id="credito-form" class="transaction-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="credito-moneda">Moneda</label>
+                                        <select id="credito-moneda">
+                                            <option value="CRC" selected>Colones (CRC)</option>
+                                            <option value="USD">Dólares (USD)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="credito-tipo">Tipo</label>
+                                        <select id="credito-tipo">
+                                            <option value="Comida">Comida</option>
+                                            <option value="Transporte">Transporte</option>
+                                            <option value="Viaje">Viaje</option>
+                                            <option value="Gasolina">Gasolina</option>
+                                            <option value="Otro" selected>Otro</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="credito-monto-original">Monto Original</label>
+                                        <input type="number" id="credito-monto-original" step="0.01" min="0.01" required placeholder="0.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="credito-meses">Meses</label>
+                                        <input type="number" id="credito-meses" min="1" step="1" required placeholder="12">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="credito-detalle">Detalle</label>
+                                    <input type="text" id="credito-detalle" required placeholder="Ej. Televisor 55 pulgadas">
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="credito-quien">Quién lo solicitó</label>
+                                        <select id="credito-quien">
+                                            <option value="David">David</option>
+                                            <option value="Daniela">Daniela</option>
+                                            <option value="Otro">Otro...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group hidden" id="credito-quien-otro-wrapper">
+                                        <label for="credito-quien-otro">Nombre</label>
+                                        <input type="text" id="credito-quien-otro" placeholder="Nombre de la persona">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="credito-cuenta">Cuenta Utilizada</label>
+                                    <select id="credito-cuenta">
+                                        <option value="Daniela">Daniela</option>
+                                        <option value="David">David</option>
+                                        <option value="DyD">DyD</option>
+                                        <option value="Crédito">Crédito</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="date-input">Fecha</label>
-                                    <input type="date" id="date-input" required>
-                                </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label for="desc-input">Descripción</label>
-                                <input type="text" id="desc-input" required placeholder="Ej. Supermercado, Alquiler, Salario...">
-                            </div>
-
-                            <button type="submit" class="btn-submit" id="submit-btn">
-                                <i data-lucide="plus"></i> Registrar Transacción
-                            </button>
-                        </form>
-                    </section>
-
-                    <!-- Savings Goals Panel -->
-                    <section class="content-panel goals-panel" id="section-goals">
-                        <div class="panel-header">
-                            <h4>Metas de Ahorro</h4>
-                            <button type="button" class="btn-icon" id="btn-add-goal" title="Nueva Meta" aria-label="Nueva Meta">
-                                <i data-lucide="plus"></i>
-                            </button>
-                        </div>
-
-                        <!-- Add Goal Mini-Form (Hidden by default) -->
-                        <form id="goal-form" class="goal-form hidden">
-                            <div class="form-group">
-                                <label for="goal-name">Nombre de la Meta</label>
-                                <input type="text" id="goal-name" required placeholder="Ej. Fondo de Emergencia, Viaje...">
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="goal-target">Monto Objetivo ($)</label>
-                                    <input type="number" id="goal-target" min="1" required placeholder="1000">
-                                </div>
-                                <div class="form-group">
-                                    <label for="goal-current">Monto Inicial ($)</label>
-                                    <input type="number" id="goal-current" min="0" required placeholder="0" value="0">
-                                </div>
-                            </div>
-                            <div class="goal-form-actions">
-                                <button type="button" class="btn-text" id="btn-cancel-goal">Cancelar</button>
-                                <button type="submit" class="btn-primary btn-sm">Guardar</button>
-                            </div>
-                        </form>
-
-                        <div class="goals-list" id="goals-list">
-                            <!-- Goals will be generated dynamically -->
-                        </div>
-                    </section>
+                                <button type="submit" class="btn-submit">
+                                    <i data-lucide="plus"></i> Registrar Crédito
+                                </button>
+                            </form>
+                        </section>
+                    </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Process Pending Modal -->
+    <div class="modal-overlay hidden" id="process-modal">
+        <div class="modal-box">
+            <h4 id="process-modal-title">Procesar Gasto Pendiente</h4>
+            <form id="process-form">
+                <div class="form-group">
+                    <label for="process-usuario">Usuario que procesa</label>
+                    <select id="process-usuario">
+                        <option value="David">David</option>
+                        <option value="Daniela">Daniela</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="process-detalle">Comentario</label>
+                    <input type="text" id="process-detalle" placeholder="Opcional">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-text" id="btn-cancel-process">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-sm">Confirmar</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Notification Toast -->

@@ -1,413 +1,603 @@
 /* ==========================================================================
-   Finanzas Daniela - Core Application Logic
+   Control de Gastos del Hogar - David & Daniela
    ========================================================================== */
-
-// --- Category Configuration ---
-const categoriesConfig = {
-    expense: [
-        { value: 'food', label: 'Comida y Súper', icon: 'utensils', class: 'cat-food' },
-        { value: 'rent', label: 'Alquiler y Hogar', icon: 'home', class: 'cat-rent' },
-        { value: 'transport', label: 'Transporte', icon: 'car', class: 'cat-transport' },
-        { value: 'utilities', label: 'Servicios', icon: 'plug', class: 'cat-utilities' },
-        { value: 'entertainment', label: 'Entretenimiento', icon: 'tv', class: 'cat-entertainment' },
-        { value: 'shopping', label: 'Compras', icon: 'shopping-bag', class: 'cat-shopping' },
-        { value: 'others', label: 'Otros Gastos', icon: 'help-circle', class: 'cat-others' }
-    ],
-    income: [
-        { value: 'salary', label: 'Salario', icon: 'briefcase', class: 'cat-salary' },
-        { value: 'investments', label: 'Inversiones', icon: 'trending-up', class: 'cat-investments' },
-        { value: 'others', label: 'Otros Ingresos', icon: 'dollar-sign', class: 'cat-others' }
-    ]
-};
 
 // --- Supabase Client ---
 const SUPABASE_URL = 'https://jcwzgzwnwwaypshfchfs.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_FZyfUSZPyfFULmP17qvSDg_jT-ScqGg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- Config ---
+const EXCHANGE_RATE = 520; // CRC per USD, fixed rate for aggregation
+const tiposConfig = {
+    'Comida': { icon: 'utensils', class: 'cat-food' },
+    'Transporte': { icon: 'car', class: 'cat-transport' },
+    'Viaje': { icon: 'plane', class: 'cat-viaje' },
+    'Gasolina': { icon: 'fuel', class: 'cat-gasolina' },
+    'Otro': { icon: 'help-circle', class: 'cat-others' }
+};
+const colorPalette = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f43f5e'];
+
 // --- Application State ---
-let transactions = [];
-let goals = [];
+let gastos = [];
+let creditos = [];
 let currentTheme = 'dark';
-let activeFilter = 'all';
+let gastoActiveFilter = 'all';
+let trendRange = 'weekly';
+let processTargetIds = [];
+const personaColors = {};
 
 // --- Chart Instances ---
-let cashflowChartInstance = null;
-let categoryChartInstance = null;
+let trendChartInstance = null;
+let tipoChartInstance = null;
+let personaChartInstance = null;
+let creditoChartInstance = null;
 
 // --- DOM Elements ---
-const totalBalanceEl = document.getElementById('total-balance');
-const totalIncomeEl = document.getElementById('total-income');
-const totalExpenseEl = document.getElementById('total-expense');
-const savingsRateEl = document.getElementById('savings-rate');
-const savingsBarEl = document.getElementById('savings-bar');
-const balanceTrendEl = document.getElementById('balance-trend');
-const incomePercentageEl = document.getElementById('income-percentage');
-const expensePercentageEl = document.getElementById('expense-percentage');
-
 const currentDateEl = document.getElementById('current-date');
-const transactionsListEl = document.getElementById('transactions-list');
-const transactionForm = document.getElementById('transaction-form');
-const amountInput = document.getElementById('amount-input');
-const categorySelect = document.getElementById('category-select');
-const dateInput = document.getElementById('date-input');
-const descInput = document.getElementById('desc-input');
-const typeExpenseRadio = document.getElementById('type-expense');
-const typeIncomeRadio = document.getElementById('type-income');
-
-const searchInput = document.getElementById('search-input');
-const filterBtns = document.querySelectorAll('.filter-btn');
+const pageTitleEl = document.getElementById('page-title');
+const pageSubtitleEl = document.getElementById('page-subtitle');
 const themeBtn = document.getElementById('theme-btn');
 const themeIcon = document.getElementById('theme-icon');
 
-// Goals Elements
-const btnAddGoal = document.getElementById('btn-add-goal');
-const goalForm = document.getElementById('goal-form');
-const btnCancelGoal = document.getElementById('btn-cancel-goal');
-const goalsListEl = document.getElementById('goals-list');
+const pageDashboardEl = document.getElementById('page-dashboard');
+const pageGastosEl = document.getElementById('page-gastos');
+const pageCreditosEl = document.getElementById('page-creditos');
 
-// Toast Notification
+const kpiSemanaEl = document.getElementById('kpi-semana');
+const kpiSaldoNetoEl = document.getElementById('kpi-saldo-neto');
+const kpiSaldoDetalleEl = document.getElementById('kpi-saldo-detalle');
+const kpiCreditoPendienteEl = document.getElementById('kpi-credito-pendiente');
+const kpiMesEl = document.getElementById('kpi-mes');
+
+const pendingListEl = document.getElementById('pending-list');
+const btnProcessAll = document.getElementById('btn-process-all');
+
+const gastosListEl = document.getElementById('gastos-list');
+const gastoSearchInput = document.getElementById('gasto-search');
+const gastoForm = document.getElementById('gasto-form');
+const gastoMoneda = document.getElementById('gasto-moneda');
+const gastoCurrencySymbol = document.getElementById('gasto-currency-symbol');
+const gastoMonto = document.getElementById('gasto-monto');
+const gastoTipo = document.getElementById('gasto-tipo');
+const gastoDetalle = document.getElementById('gasto-detalle');
+const gastoQuien = document.getElementById('gasto-quien');
+const gastoQuienOtroWrapper = document.getElementById('gasto-quien-otro-wrapper');
+const gastoQuienOtro = document.getElementById('gasto-quien-otro');
+const gastoCuenta = document.getElementById('gasto-cuenta');
+const gastoPctWrapper = document.getElementById('gasto-pct-wrapper');
+const gastoPct = document.getElementById('gasto-pct');
+
+const creditosListEl = document.getElementById('creditos-list');
+const creditoForm = document.getElementById('credito-form');
+const creditoMoneda = document.getElementById('credito-moneda');
+const creditoMontoOriginal = document.getElementById('credito-monto-original');
+const creditoMeses = document.getElementById('credito-meses');
+const creditoTipo = document.getElementById('credito-tipo');
+const creditoDetalle = document.getElementById('credito-detalle');
+const creditoQuien = document.getElementById('credito-quien');
+const creditoQuienOtroWrapper = document.getElementById('credito-quien-otro-wrapper');
+const creditoQuienOtro = document.getElementById('credito-quien-otro');
+const creditoCuenta = document.getElementById('credito-cuenta');
+
+const processModal = document.getElementById('process-modal');
+const processModalTitle = document.getElementById('process-modal-title');
+const processForm = document.getElementById('process-form');
+const processUsuario = document.getElementById('process-usuario');
+const processDetalle = document.getElementById('process-detalle');
+const btnCancelProcess = document.getElementById('btn-cancel-process');
+
 const toastEl = document.getElementById('toast-notification');
 const toastMessageEl = document.getElementById('toast-message');
 const toastIconEl = document.getElementById('toast-icon');
 
 // --- Helper Functions ---
 
-// Show Toast Notification
 function showToast(message, type = 'info') {
     toastMessageEl.innerText = message;
     toastEl.className = `toast toast-${type} show`;
-    
-    // Set matching icon
+
     let iconName = 'info';
     if (type === 'success') iconName = 'check-circle';
     if (type === 'danger') iconName = 'alert-triangle';
     toastIconEl.setAttribute('data-lucide', iconName);
-    lucide.createIcons({
-        attrs: { class: 'lucide-icon' },
-        nameAttr: 'data-lucide'
-    });
+    lucide.createIcons({ attrs: { class: 'lucide-icon' }, nameAttr: 'data-lucide' });
 
     setTimeout(() => {
         toastEl.classList.remove('show');
     }, 3500);
 }
 
-// Format numbers to Currency ($USD)
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('es-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(amount);
+function formatCRC(amount) {
+    return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 2 }).format(amount || 0);
 }
 
-// Generate Month Labels for the last 6 months
-function getLast6MonthsLabels() {
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const labels = [];
-    const d = new Date();
-    for (let i = 5; i >= 0; i--) {
-        const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-        labels.push(`${months[m.getMonth()]} ${m.getFullYear().toString().substr(-2)}`);
-    }
-    return labels;
+function formatUSD(amount) {
+    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
 }
 
-// Parse date string to relative descriptive string
 function formatDateString(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// --- Sample Data Generator ---
-async function loadSampleData() {
-    const now = new Date();
-    
-    // Helper to generate ISO Date strings relative to today
-    const daysAgo = (num) => {
-        const d = new Date();
-        d.setDate(now.getDate() - num);
-        return d.toISOString().split('T')[0];
-    };
-
-    // Helper to generate dates in previous months
-    const monthsAgo = (mOffset, day) => {
-        const d = new Date(now.getFullYear(), now.getMonth() - mOffset, day);
-        return d.toISOString().split('T')[0];
-    };
-
-    transactions = [
-        // Current Month
-        { id: '1', type: 'income', amount: 3500, category: 'salary', date: monthsAgo(0, 1), description: 'Nómina Finanzas Daniela' },
-        { id: '2', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(0, 2), description: 'Renta Alquiler Departamento' },
-        { id: '3', type: 'expense', amount: 120.50, category: 'food', date: daysAgo(2), description: 'Supermercado Semanal' },
-        { id: '4', type: 'expense', amount: 65, category: 'utilities', date: daysAgo(5), description: 'Recibo de Electricidad y Agua' },
-        { id: '5', type: 'expense', amount: 15.99, category: 'entertainment', date: daysAgo(7), description: 'Suscripción Netflix Familiar' },
-        { id: '6', type: 'income', amount: 480, category: 'investments', date: daysAgo(10), description: 'Rendimientos Cripto/Acciones' },
-        { id: '7', type: 'expense', amount: 84.50, category: 'food', date: daysAgo(1), description: 'Cena Restaurante Italiana' },
-        { id: '8', type: 'expense', amount: 45, category: 'transport', date: daysAgo(4), description: 'Recarga de Gasolina' },
-        { id: '9', type: 'expense', amount: 125, category: 'shopping', date: daysAgo(12), description: 'Zapatos Deportivos Nuevos' },
-        
-        // Month -1
-        { id: '10', type: 'income', amount: 3200, category: 'salary', date: monthsAgo(1, 1), description: 'Nómina Finanzas Daniela' },
-        { id: '11', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(1, 2), description: 'Renta Alquiler Departamento' },
-        { id: '12', type: 'expense', amount: 240, category: 'food', date: monthsAgo(1, 12), description: 'Compras de Alimentos' },
-        { id: '13', type: 'expense', amount: 180, category: 'shopping', date: monthsAgo(1, 18), description: 'Regalo de Cumpleaños' },
-        { id: '14', type: 'expense', amount: 80, category: 'utilities', date: monthsAgo(1, 10), description: 'Factura de Teléfono e Internet' },
-        { id: '15', type: 'income', amount: 350, category: 'others', date: monthsAgo(1, 25), description: 'Venta de Ropa Usada' },
-        
-        // Month -2
-        { id: '16', type: 'income', amount: 3200, category: 'salary', date: monthsAgo(2, 1), description: 'Nómina Finanzas Daniela' },
-        { id: '17', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(2, 2), description: 'Renta Alquiler Departamento' },
-        { id: '18', type: 'expense', amount: 310, category: 'food', date: monthsAgo(2, 10), description: 'Supermercado Mensual' },
-        { id: '19', type: 'expense', amount: 120, category: 'transport', date: monthsAgo(2, 15), description: 'Mantenimiento del Vehículo' },
-        { id: '20', type: 'expense', amount: 95, category: 'entertainment', date: monthsAgo(2, 22), description: 'Concierto Fin de Semana' },
-
-        // Month -3
-        { id: '21', type: 'income', amount: 3200, category: 'salary', date: monthsAgo(3, 1), description: 'Nómina Finanzas' },
-        { id: '22', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(3, 2), description: 'Renta Alquiler Departamento' },
-        { id: '23', type: 'expense', amount: 195, category: 'food', date: monthsAgo(3, 15), description: 'Compras Varias Hogar' },
-        { id: '24', type: 'income', amount: 500, category: 'investments', date: monthsAgo(3, 28), description: 'Retiro Fondos Inversión' },
-
-        // Month -4
-        { id: '25', type: 'income', amount: 3200, category: 'salary', date: monthsAgo(4, 1), description: 'Nómina Finanzas' },
-        { id: '26', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(4, 2), description: 'Renta Alquiler' },
-        { id: '27', type: 'expense', amount: 280, category: 'shopping', date: monthsAgo(4, 8), description: 'Renovación Ropa de Cama' },
-        { id: '28', type: 'expense', amount: 140, category: 'food', date: monthsAgo(4, 14), description: 'Cenas fuera' },
-
-        // Month -5
-        { id: '29', type: 'income', amount: 3200, category: 'salary', date: monthsAgo(5, 1), description: 'Nómina Finanzas' },
-        { id: '30', type: 'expense', amount: 950, category: 'rent', date: monthsAgo(5, 2), description: 'Renta Alquiler' },
-        { id: '31', type: 'expense', amount: 150, category: 'food', date: monthsAgo(5, 10), description: 'Alimentos Semanales' }
-    ];
-
-    goals = [
-        { id: 'g1', name: 'Viaje de Fin de Año', target: 2000, current: 850 },
-        { id: 'g2', name: 'Fondo de Emergencias', target: 5000, current: 3200 },
-        { id: 'g3', name: 'Laptop Pro Nueva', target: 1800, current: 400 }
-    ];
-
-    await sb.from('transactions').insert(transactions);
-    await sb.from('goals').insert(goals);
+function formatShortDate(d) {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
-// --- Data Operations & Math ---
+function getTipoConfig(tipo) {
+    return tiposConfig[tipo] || tiposConfig['Otro'];
+}
 
-function calculateKPIs() {
-    let totalIncome = 0;
-    let totalExpense = 0;
-    
-    // Filter transactions for current month to calculate monthly stats
+function getPersonaColor(nombre) {
+    if (!personaColors[nombre]) {
+        const idx = Object.keys(personaColors).length % colorPalette.length;
+        personaColors[nombre] = colorPalette[idx];
+    }
+    return personaColors[nombre];
+}
+
+function getWeekRange(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { start: monday, end: sunday };
+}
+
+function getChartColors() {
+    const isDark = currentTheme === 'dark';
+    return {
+        text: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.05)'
+    };
+}
+
+// --- Debt Calculation ---
+
+// Determines who owes whom for a single gasto.
+// Cuenta 'DyD' is already split at the source -> no debt.
+// Otherwise, the reimbursement amount (monto_crc * porcentaje_reembolso%) is owed
+// to whoever paid (realizado_por). If a third party paid, both David and Daniela
+// owe that third party using the same configurable percentage.
+function calcularDeudas(gasto) {
+    if (gasto.cuenta === 'DyD') return [];
+    const reembolso = gasto.monto_crc * (gasto.porcentaje_reembolso / 100);
+    if (reembolso <= 0) return [];
+    const pagador = gasto.realizado_por;
+
+    if (pagador === 'David') return [{ deudor: 'Daniela', acreedor: 'David', monto: reembolso }];
+    if (pagador === 'Daniela') return [{ deudor: 'David', acreedor: 'Daniela', monto: reembolso }];
+
+    return [
+        { deudor: 'David', acreedor: pagador, monto: reembolso },
+        { deudor: 'Daniela', acreedor: pagador, monto: reembolso }
+    ];
+}
+
+// --- Trend Data Builders ---
+
+function getWeeklyTrendData() {
+    const weeks = [];
+    const today = new Date();
+    for (let i = 7; i >= 0; i--) {
+        const refDate = new Date(today);
+        refDate.setDate(today.getDate() - i * 7);
+        const { start, end } = getWeekRange(refDate);
+        weeks.push({ start, end, label: `${formatShortDate(start)} - ${formatShortDate(end)}`, total: 0 });
+    }
+    gastos.forEach(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        const week = weeks.find(w => d >= w.start && d <= w.end);
+        if (week) week.total += g.monto_crc;
+    });
+    return { labels: weeks.map(w => w.label), data: weeks.map(w => w.total) };
+}
+
+function getMonthlyTrendData() {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const today = new Date();
+    const buckets = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        buckets.push({ month: d.getMonth(), year: d.getFullYear(), label: `${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`, total: 0 });
+    }
+    gastos.forEach(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        const bucket = buckets.find(b => b.month === d.getMonth() && b.year === d.getFullYear());
+        if (bucket) bucket.total += g.monto_crc;
+    });
+    return { labels: buckets.map(b => b.label), data: buckets.map(b => b.total) };
+}
+
+// --- KPI Rendering ---
+
+function renderKPIs() {
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const { start: weekStart, end: weekEnd } = getWeekRange(now);
 
-    // Overall historical totals
-    transactions.forEach(t => {
-        if (t.type === 'income') {
-            totalIncome += parseFloat(t.amount);
-        } else {
-            totalExpense += parseFloat(t.amount);
+    const gastosSemana = gastos.filter(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        return d >= weekStart && d <= weekEnd;
+    });
+    kpiSemanaEl.textContent = formatCRC(gastosSemana.reduce((sum, g) => sum + g.monto_crc, 0));
+
+    const gastosMes = gastos.filter(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    kpiMesEl.textContent = formatCRC(gastosMes.reduce((sum, g) => sum + g.monto_crc, 0));
+
+    const pendientes = gastos.filter(g => g.estado === 'Pendiente');
+    let netDavidDebeADaniela = 0;
+    const deudasTerceros = {};
+
+    pendientes.forEach(g => {
+        calcularDeudas(g).forEach(d => {
+            if (d.deudor === 'David' && d.acreedor === 'Daniela') {
+                netDavidDebeADaniela += d.monto;
+            } else if (d.deudor === 'Daniela' && d.acreedor === 'David') {
+                netDavidDebeADaniela -= d.monto;
+            } else {
+                const key = `${d.deudor} → ${d.acreedor}`;
+                deudasTerceros[key] = (deudasTerceros[key] || 0) + d.monto;
+            }
+        });
+    });
+
+    if (Math.abs(netDavidDebeADaniela) < 0.01) {
+        kpiSaldoNetoEl.textContent = formatCRC(0);
+        kpiSaldoNetoEl.className = 'stat-value';
+        kpiSaldoDetalleEl.textContent = 'Sin pendientes entre David y Daniela';
+    } else if (netDavidDebeADaniela > 0) {
+        kpiSaldoNetoEl.textContent = formatCRC(netDavidDebeADaniela);
+        kpiSaldoNetoEl.className = 'stat-value text-danger';
+        kpiSaldoDetalleEl.textContent = 'David le debe a Daniela';
+    } else {
+        kpiSaldoNetoEl.textContent = formatCRC(Math.abs(netDavidDebeADaniela));
+        kpiSaldoNetoEl.className = 'stat-value text-danger';
+        kpiSaldoDetalleEl.textContent = 'Daniela le debe a David';
+    }
+
+    const terceroKeys = Object.keys(deudasTerceros);
+    if (terceroKeys.length > 0) {
+        const extra = terceroKeys.map(k => `${k}: ${formatCRC(deudasTerceros[k])}`).join(' · ');
+        kpiSaldoDetalleEl.textContent += ` — ${extra}`;
+    }
+
+    const creditoPendiente = gastos
+        .filter(g => g.cuenta === 'Crédito' && g.estado === 'Pendiente')
+        .reduce((sum, g) => sum + g.monto_crc, 0);
+    kpiCreditoPendienteEl.textContent = formatCRC(creditoPendiente);
+}
+
+// --- Chart Rendering ---
+
+function renderTrendChart() {
+    const { labels, data } = trendRange === 'weekly' ? getWeeklyTrendData() : getMonthlyTrendData();
+    const colors = getChartColors();
+
+    if (trendChartInstance) {
+        trendChartInstance.data.labels = labels;
+        trendChartInstance.data.datasets[0].data = data;
+        trendChartInstance.options.scales.x.ticks.color = colors.text;
+        trendChartInstance.options.scales.y.ticks.color = colors.text;
+        trendChartInstance.options.scales.y.grid.color = colors.grid;
+        trendChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('trend-chart').getContext('2d');
+    trendChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Gastos',
+                data,
+                backgroundColor: 'rgba(139, 92, 246, 0.55)',
+                borderRadius: 6,
+                barThickness: 28
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => ` ${formatCRC(ctx.raw)}` } }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: colors.text, font: { family: 'Inter' } } },
+                y: { grid: { color: colors.grid }, ticks: { color: colors.text, font: { family: 'Inter' } } }
+            }
         }
     });
+}
 
-    const balance = totalIncome - totalExpense;
-
-    // Set balances in DOM
-    totalBalanceEl.innerText = formatCurrency(balance);
-    totalIncomeEl.innerText = formatCurrency(totalIncome);
-    totalExpenseEl.innerText = formatCurrency(totalExpense);
-
-    // Dynamic classes/styles for balance
-    if (balance < 0) {
-        totalBalanceEl.className = "stat-value text-danger";
-        balanceTrendEl.className = "stat-trend trend-down";
-        balanceTrendEl.innerHTML = '<i data-lucide="alert-triangle"></i> En déficit';
-    } else if (balance > 0) {
-        totalBalanceEl.className = "stat-value text-success";
-        balanceTrendEl.className = "stat-trend trend-up";
-        balanceTrendEl.innerHTML = '<i data-lucide="trending-up"></i> Saldo positivo';
-    } else {
-        totalBalanceEl.className = "stat-value";
-        balanceTrendEl.className = "stat-trend trend-neutral";
-        balanceTrendEl.innerHTML = '<i data-lucide="activity"></i> En balance';
-    }
-
-    // Savings Rate Math
-    let savingsRate = 0;
-    if (totalIncome > 0) {
-        savingsRate = ((totalIncome - totalExpense) / totalIncome) * 100;
-        savingsRate = Math.max(0, Math.round(savingsRate)); // Clamp positive
-    }
-    
-    savingsRateEl.innerText = `${savingsRate}%`;
-    savingsBarEl.style.width = `${Math.min(savingsRate, 100)}%`;
-
-    // Calculate dynamic comparisons (Current month vs Previous Month as demonstration)
-    const currentMonthT = transactions.filter(t => {
-        const d = new Date(t.date + 'T00:00:00');
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+function renderTipoChart() {
+    const { start, end } = getWeekRange(new Date());
+    const gastosSemana = gastos.filter(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        return d >= start && d <= end;
     });
 
-    let currentMonthIncome = 0;
-    let currentMonthExpense = 0;
-    currentMonthT.forEach(t => {
-        if (t.type === 'income') currentMonthIncome += t.amount;
-        else currentMonthExpense += t.amount;
+    const totals = {};
+    gastosSemana.forEach(g => { totals[g.tipo] = (totals[g.tipo] || 0) + g.monto_crc; });
+
+    const labels = [];
+    const data = [];
+    const colors = [];
+    let idx = 0;
+    Object.entries(totals).forEach(([tipo, total]) => {
+        if (total > 0) {
+            labels.push(tipo);
+            data.push(total);
+            colors.push(colorPalette[idx % colorPalette.length]);
+            idx++;
+        }
+    });
+    if (data.length === 0) {
+        labels.push('Sin gastos');
+        data.push(1);
+        colors.push('#64748b');
+    }
+
+    const borderColor = currentTheme === 'dark' ? '#0f1626' : '#ffffff';
+
+    if (tipoChartInstance) {
+        tipoChartInstance.data.labels = labels;
+        tipoChartInstance.data.datasets[0].data = data;
+        tipoChartInstance.data.datasets[0].backgroundColor = colors;
+        tipoChartInstance.data.datasets[0].borderColor = borderColor;
+        tipoChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('tipo-chart').getContext('2d');
+    tipoChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor, hoverOffset: 6 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: getChartColors().text, boxWidth: 10, font: { size: 11 } } },
+                tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${formatCRC(ctx.raw)}` } }
+            }
+        }
+    });
+}
+
+function renderPersonaChart() {
+    const { start, end } = getWeekRange(new Date());
+    const gastosSemana = gastos.filter(g => {
+        const d = new Date(g.fecha + 'T00:00:00');
+        return d >= start && d <= end;
     });
 
-    // Update trend labels dynamically
-    const expensePercentVal = currentMonthIncome > 0 ? Math.round((currentMonthExpense / currentMonthIncome) * 100) : 0;
-    expensePercentageEl.innerHTML = `<i data-lucide="arrow-down-right"></i> ${expensePercentVal}% del ingreso este mes`;
+    const totals = {};
+    gastosSemana.forEach(g => { totals[g.realizado_por] = (totals[g.realizado_por] || 0) + g.monto_crc; });
 
-    // Count income items for trend placeholder
-    const incomeItemsCount = currentMonthT.filter(t => t.type === 'income').length;
-    incomePercentageEl.innerHTML = `<i data-lucide="arrow-up-right"></i> ${incomeItemsCount} depósito(s) este mes`;
+    let labels = Object.keys(totals);
+    let data = Object.values(totals);
+    let colors = labels.map(getPersonaColor);
 
+    if (labels.length === 0) {
+        labels = ['Sin gastos'];
+        data = [0];
+        colors = ['#64748b'];
+    }
+
+    const colorsTheme = getChartColors();
+
+    if (personaChartInstance) {
+        personaChartInstance.data.labels = labels;
+        personaChartInstance.data.datasets[0].data = data;
+        personaChartInstance.data.datasets[0].backgroundColor = colors;
+        personaChartInstance.options.scales.x.ticks.color = colorsTheme.text;
+        personaChartInstance.options.scales.y.ticks.color = colorsTheme.text;
+        personaChartInstance.options.scales.y.grid.color = colorsTheme.grid;
+        personaChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('persona-chart').getContext('2d');
+    personaChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, barThickness: 36 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => ` ${formatCRC(ctx.raw)}` } }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: colorsTheme.text } },
+                y: { grid: { color: colorsTheme.grid }, ticks: { color: colorsTheme.text } }
+            }
+        }
+    });
+}
+
+function renderCreditoChart() {
+    const pendientesCredito = gastos.filter(g => g.cuenta === 'Crédito' && g.estado === 'Pendiente');
+    const totals = {};
+    pendientesCredito.forEach(g => { totals[g.realizado_por] = (totals[g.realizado_por] || 0) + g.monto_crc; });
+
+    let labels = Object.keys(totals);
+    let data = Object.values(totals);
+    let colors = labels.map(getPersonaColor);
+
+    if (labels.length === 0) {
+        labels = ['Sin pendientes'];
+        data = [0];
+        colors = ['#64748b'];
+    }
+
+    const colorsTheme = getChartColors();
+
+    if (creditoChartInstance) {
+        creditoChartInstance.data.labels = labels;
+        creditoChartInstance.data.datasets[0].data = data;
+        creditoChartInstance.data.datasets[0].backgroundColor = colors;
+        creditoChartInstance.options.scales.x.ticks.color = colorsTheme.text;
+        creditoChartInstance.options.scales.y.ticks.color = colorsTheme.text;
+        creditoChartInstance.options.scales.x.grid.color = colorsTheme.grid;
+        creditoChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('credito-chart').getContext('2d');
+    creditoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, barThickness: 36 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => ` ${formatCRC(ctx.raw)}` } }
+            },
+            scales: {
+                x: { grid: { color: colorsTheme.grid }, ticks: { color: colorsTheme.text } },
+                y: { grid: { display: false }, ticks: { color: colorsTheme.text } }
+            }
+        }
+    });
+}
+
+// --- List Rendering ---
+
+function buildGastoRow(g) {
+    const cfg = getTipoConfig(g.tipo);
+    const li = document.createElement('li');
+    li.className = 'transaction-item';
+    li.setAttribute('data-id', g.id);
+
+    const badgeClass = g.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-procesado';
+    const montoLabel = g.moneda === 'USD' ? `${formatUSD(g.monto)} (${formatCRC(g.monto_crc)})` : formatCRC(g.monto);
+
+    li.innerHTML = `
+        <div class="transaction-left">
+            <div class="transaction-category-icon ${cfg.class}">
+                <i data-lucide="${cfg.icon}"></i>
+            </div>
+            <div class="transaction-details">
+                <span class="transaction-desc">${g.detalle}</span>
+                <div class="transaction-meta">
+                    <span class="category-tag">${g.tipo}</span>
+                    <span class="separator">•</span>
+                    <span>${g.realizado_por}</span>
+                    <span class="separator">•</span>
+                    <span>${g.cuenta}</span>
+                    <span class="separator">•</span>
+                    <span class="transaction-date">${formatDateString(g.fecha)}</span>
+                    <span class="badge ${badgeClass}">${g.estado}</span>
+                </div>
+            </div>
+        </div>
+        <div class="transaction-right">
+            <span class="transaction-amount text-danger">${montoLabel}</span>
+            ${g.estado === 'Pendiente' ? '<button class="transaction-delete-btn btn-process-single" title="Procesar"><i data-lucide="check"></i></button>' : ''}
+            <button class="transaction-delete-btn btn-delete-gasto" title="Eliminar"><i data-lucide="trash-2"></i></button>
+        </div>
+    `;
+
+    const processBtn = li.querySelector('.btn-process-single');
+    if (processBtn) {
+        processBtn.addEventListener('click', () => openProcessModal([g.id], 'Procesar Gasto Pendiente'));
+    }
+    li.querySelector('.btn-delete-gasto').addEventListener('click', () => eliminarGasto(g.id));
+
+    return li;
+}
+
+function renderPendingList() {
+    const pendientes = gastos.filter(g => g.estado === 'Pendiente').sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    pendingListEl.innerHTML = '';
+
+    if (pendientes.length === 0) {
+        pendingListEl.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="check-circle"></i>
+                <p>No hay gastos pendientes</p>
+                <span class="subtitle">Todo está al día</span>
+            </div>`;
+        lucide.createIcons();
+        return;
+    }
+
+    pendientes.forEach(g => pendingListEl.appendChild(buildGastoRow(g)));
     lucide.createIcons();
 }
 
-// --- UI Rendering ---
+function renderGastosList() {
+    gastosListEl.innerHTML = '';
+    let filtered = [...gastos].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-// Populate Category dropdown based on selected type (expense / income)
-function populateCategories(type) {
-    categorySelect.innerHTML = '';
-    categoriesConfig[type].forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat.value;
-        option.textContent = cat.label;
-        categorySelect.appendChild(option);
-    });
-}
-
-// Get category details by value
-function getCategoryDetails(val, type) {
-    const list = categoriesConfig[type];
-    return list.find(c => c.value === val) || { label: 'Otros', icon: 'help-circle', class: 'cat-others' };
-}
-
-// Render Transactions List
-function renderTransactions() {
-    transactionsListEl.innerHTML = '';
-    
-    // Sort: most recent first
-    let filtered = [...transactions].sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
-
-    // Apply filters
-    if (activeFilter !== 'all') {
-        filtered = filtered.filter(t => t.type === activeFilter);
+    if (gastoActiveFilter !== 'all') {
+        filtered = filtered.filter(g => g.estado === gastoActiveFilter);
     }
 
-    // Apply Search
-    const searchVal = searchInput.value.toLowerCase().trim();
+    const searchVal = gastoSearchInput.value.toLowerCase().trim();
     if (searchVal !== '') {
-        filtered = filtered.filter(t => 
-            t.description.toLowerCase().includes(searchVal) || 
-            getCategoryDetails(t.category, t.type).label.toLowerCase().includes(searchVal) ||
-            t.amount.toString().includes(searchVal)
+        filtered = filtered.filter(g =>
+            g.detalle.toLowerCase().includes(searchVal) ||
+            g.tipo.toLowerCase().includes(searchVal) ||
+            g.realizado_por.toLowerCase().includes(searchVal) ||
+            g.cuenta.toLowerCase().includes(searchVal)
         );
     }
 
     if (filtered.length === 0) {
-        transactionsListEl.innerHTML = `
+        gastosListEl.innerHTML = `
             <div class="empty-state">
                 <i data-lucide="inbox"></i>
-                <p>No se encontraron transacciones</p>
-                <span class="subtitle">Registra un nuevo movimiento en el formulario lateral</span>
-            </div>
-        `;
+                <p>No se encontraron gastos</p>
+                <span class="subtitle">Registra un nuevo gasto en el formulario lateral</span>
+            </div>`;
         lucide.createIcons();
         return;
     }
 
-    filtered.forEach(t => {
-        const cat = getCategoryDetails(t.category, t.type);
-        const li = document.createElement('li');
-        li.className = 'transaction-item';
-        li.setAttribute('data-id', t.id);
-
-        const isIncome = t.type === 'income';
-        const sign = isIncome ? '+' : '-';
-        const amountClass = isIncome ? 'text-success' : 'text-danger';
-
-        li.innerHTML = `
-            <div class="transaction-left">
-                <div class="transaction-category-icon ${cat.class}">
-                    <i data-lucide="${cat.icon}"></i>
-                </div>
-                <div class="transaction-details">
-                    <span class="transaction-desc">${t.description}</span>
-                    <div class="transaction-meta">
-                        <span class="category-tag">${cat.label}</span>
-                        <span class="separator">•</span>
-                        <span class="transaction-date">${formatDateString(t.date)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="transaction-right">
-                <span class="transaction-amount ${amountClass}">${sign}${formatCurrency(t.amount)}</span>
-                <button class="transaction-delete-btn" title="Eliminar" aria-label="Eliminar transacción">
-                    <i data-lucide="trash-2"></i>
-                </button>
-            </div>
-        `;
-
-        // Register Delete event
-        const delBtn = li.querySelector('.transaction-delete-btn');
-        delBtn.addEventListener('click', () => deleteTransaction(t.id));
-
-        transactionsListEl.appendChild(li);
-    });
-
+    filtered.forEach(g => gastosListEl.appendChild(buildGastoRow(g)));
     lucide.createIcons();
 }
 
-// Delete transaction with exit animation
-function deleteTransaction(id) {
-    const itemEl = document.querySelector(`.transaction-item[data-id="${id}"]`);
-    if (itemEl) {
-        itemEl.classList.add('item-exit');
+function renderCreditos() {
+    creditosListEl.innerHTML = '';
 
-        // Wait for animation to finish
-        itemEl.addEventListener('animationend', async () => {
-            const { error } = await sb.from('transactions').delete().eq('id', id);
-            if (error) {
-                showToast('Error al eliminar la transacción', 'danger');
-                return;
-            }
-            transactions = transactions.filter(t => t.id !== id);
-            calculateKPIs();
-            renderTransactions();
-            updateCharts();
-            showToast('Transacción eliminada con éxito', 'info');
-        });
-    }
-}
-
-// Render Goals List
-function renderGoals() {
-    goalsListEl.innerHTML = '';
-    
-    if (goals.length === 0) {
-        goalsListEl.innerHTML = `
+    if (creditos.length === 0) {
+        creditosListEl.innerHTML = `
             <div class="empty-state" style="padding: 1.5rem 0;">
-                <i data-lucide="target" style="width:36px;height:36px;"></i>
-                <p style="font-size:0.85rem;">No tienes metas activas</p>
-            </div>
-        `;
+                <i data-lucide="credit-card" style="width:36px;height:36px;"></i>
+                <p style="font-size:0.85rem;">No hay créditos registrados</p>
+            </div>`;
         lucide.createIcons();
         return;
     }
 
-    goals.forEach(goal => {
-        const percent = Math.min(100, Math.round((goal.current / goal.target) * 100));
+    creditos.forEach(c => {
+        const percent = Math.min(100, Math.round((c.meses_pagados / c.meses_totales) * 100));
+        const montoActualLabel = c.moneda === 'USD' ? formatUSD(c.monto_actual) : formatCRC(c.monto_actual);
+        const montoOriginalLabel = c.moneda === 'USD' ? formatUSD(c.monto_original) : formatCRC(c.monto_original);
+
         const div = document.createElement('div');
         div.className = 'goal-item';
         div.innerHTML = `
             <div class="goal-header">
                 <div class="goal-title-wrapper">
-                    <i data-lucide="flag" class="text-primary" style="width:16px;height:16px;"></i>
-                    <span class="goal-title">${goal.name}</span>
+                    <i data-lucide="credit-card" class="text-primary" style="width:16px;height:16px;"></i>
+                    <span class="goal-title">${c.detalle}</span>
                 </div>
                 <span class="goal-progress-percent">${percent}%</span>
             </div>
@@ -415,547 +605,385 @@ function renderGoals() {
                 <div class="goal-bar" style="width: ${percent}%"></div>
             </div>
             <div class="goal-amounts">
-                <span>Ahorrado: ${formatCurrency(goal.current)}</span>
-                <span>Objetivo: ${formatCurrency(goal.target)}</span>
+                <span>Actual: ${montoActualLabel}</span>
+                <span>Original: ${montoOriginalLabel}</span>
+            </div>
+            <div class="credit-progress-meta">
+                <span>${c.realizado_por} • ${c.cuenta}</span>
+                <span>${c.meses_pagados}/${c.meses_totales} meses</span>
             </div>
             <div class="goal-actions-overlay">
-                <button class="goal-action-btn add-funds-btn" title="Sumar Fondos" onclick="addFundsToGoal('${goal.id}')">
-                    <i data-lucide="coins" style="width:14px;height:14px;"></i>
+                <button class="goal-action-btn add-funds-btn" title="Marcar mes pagado" onclick="marcarMesPagado('${c.id}')">
+                    <i data-lucide="calendar-check" style="width:14px;height:14px;"></i>
                 </button>
-                <button class="goal-action-btn delete-goal-btn" title="Eliminar Meta" onclick="deleteGoal('${goal.id}')">
+                <button class="goal-action-btn delete-goal-btn" title="Eliminar" onclick="eliminarCredito('${c.id}')">
                     <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                 </button>
             </div>
         `;
-        goalsListEl.appendChild(div);
+        creditosListEl.appendChild(div);
     });
 
     lucide.createIcons();
 }
 
-// Add funds to a savings goal
-window.addFundsToGoal = async function(id) {
-    const goal = goals.find(g => g.id === id);
-    if (!goal) return;
+function renderAll() {
+    renderKPIs();
+    renderTrendChart();
+    renderTipoChart();
+    renderPersonaChart();
+    renderCreditoChart();
+    renderPendingList();
+    renderGastosList();
+    lucide.createIcons();
+}
 
-    const amountToAdd = prompt(`¿Cuánto deseas abonar a la meta "${goal.name}"?`);
-    if (amountToAdd === null) return; // Cancelled
+// --- Gasto CRUD ---
 
-    const funds = parseFloat(amountToAdd);
-    if (isNaN(funds) || funds <= 0) {
-        showToast('Monto inválido para sumar a la meta', 'danger');
+window.eliminarGasto = async function (id) {
+    if (!confirm('¿Eliminar este gasto?')) return;
+    const { error } = await sb.from('gastos').delete().eq('id', id);
+    if (error) {
+        showToast('Error al eliminar el gasto', 'danger');
+        return;
+    }
+    gastos = gastos.filter(g => g.id !== id);
+    renderAll();
+    showToast('Gasto eliminado', 'info');
+};
+
+// --- Credito CRUD ---
+
+window.marcarMesPagado = async function (id) {
+    const credito = creditos.find(c => c.id === id);
+    if (!credito) return;
+    if (credito.meses_pagados >= credito.meses_totales) {
+        showToast('Este crédito ya está completamente pagado', 'info');
         return;
     }
 
-    // Verify if we have sufficient general balance or just add to goal anyway
-    const newCurrent = Math.min(goal.current + funds, goal.target);
+    const nuevosMesesPagados = credito.meses_pagados + 1;
+    const nuevoMontoActual = Math.max(0, credito.monto_original - credito.cuota_mensual * nuevosMesesPagados);
 
-    // Register a matching savings expense transaction to deduct from general balance
-    const newTx = {
-        id: Date.now().toString(),
-        type: 'expense',
-        amount: funds,
-        category: 'others',
-        date: new Date().toISOString().split('T')[0],
-        description: `Ahorro meta: ${goal.name}`
-    };
+    const { error } = await sb.from('creditos_tasa_cero')
+        .update({ meses_pagados: nuevosMesesPagados, monto_actual: nuevoMontoActual })
+        .eq('id', id);
 
-    const { error: goalError } = await sb.from('goals').update({ current: newCurrent }).eq('id', id);
-    const { error: txError } = await sb.from('transactions').insert(newTx);
-    if (goalError || txError) {
-        showToast('Error al abonar a la meta', 'danger');
+    if (error) {
+        showToast('Error al actualizar el crédito', 'danger');
         return;
     }
 
-    goal.current = newCurrent;
-    if (goal.current >= goal.target) {
-        showToast(`¡Felicidades! Completaste tu meta: "${goal.name}"`, 'success');
-    } else {
-        showToast(`Se abonaron ${formatCurrency(funds)} a la meta "${goal.name}"`, 'success');
-    }
-
-    transactions.push(newTx);
-
-    calculateKPIs();
-    renderTransactions();
-    renderGoals();
-    updateCharts();
+    credito.meses_pagados = nuevosMesesPagados;
+    credito.monto_actual = nuevoMontoActual;
+    renderCreditos();
+    showToast('Mes marcado como pagado', 'success');
 };
 
-// Delete Goal
-window.deleteGoal = async function(id) {
-    if (confirm('¿Estás seguro de que deseas eliminar esta meta de ahorro?')) {
-        const { error } = await sb.from('goals').delete().eq('id', id);
-        if (error) {
-            showToast('Error al eliminar la meta', 'danger');
-            return;
-        }
-        goals = goals.filter(g => g.id !== id);
-        renderGoals();
-        showToast('Meta eliminada', 'info');
+window.eliminarCredito = async function (id) {
+    if (!confirm('¿Eliminar este crédito?')) return;
+    const { error } = await sb.from('creditos_tasa_cero').delete().eq('id', id);
+    if (error) {
+        showToast('Error al eliminar el crédito', 'danger');
+        return;
     }
+    creditos = creditos.filter(c => c.id !== id);
+    renderCreditos();
+    showToast('Crédito eliminado', 'info');
 };
 
-// --- Chart.js Configuration & Operations ---
+// --- Process Modal ---
 
-// Get theme colors for Charts
-function getChartColors() {
-    const isDark = currentTheme === 'dark';
-    return {
-        text: isDark ? '#94a3b8' : '#64748b',
-        grid: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.05)',
-        income: '#10b981',
-        incomeGradientStart: 'rgba(16, 185, 129, 0.25)',
-        expense: '#f43f5e',
-        expenseGradientStart: 'rgba(244, 63, 94, 0.25)',
-        accentColors: ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#6b7280']
-    };
+function openProcessModal(ids, title) {
+    processTargetIds = ids;
+    processModalTitle.textContent = title;
+    processModal.classList.remove('hidden');
 }
 
-// Calculate aggregations for Line & Doughnut Charts
-function getChartsData() {
-    const last6Months = getLast6MonthsLabels(); // Array of "Month YY"
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-    // Initialize monthly aggregates
-    const incomeMonthly = [0, 0, 0, 0, 0, 0];
-    const expenseMonthly = [0, 0, 0, 0, 0, 0];
-
-    // Initialize category aggregates
-    const categoryTotals = {};
-    categoriesConfig.expense.forEach(c => categoryTotals[c.value] = 0);
-
-    transactions.forEach(t => {
-        const d = new Date(t.date + 'T00:00:00');
-        const tMonthLabel = `${months[d.getMonth()]} ${d.getFullYear().toString().substr(-2)}`;
-        
-        // Match transactions with last 6 months list
-        const mIdx = last6Months.indexOf(tMonthLabel);
-        if (mIdx !== -1) {
-            if (t.type === 'income') {
-                incomeMonthly[mIdx] += parseFloat(t.amount);
-            } else {
-                expenseMonthly[mIdx] += parseFloat(t.amount);
-            }
-        }
-
-        // Category breakdown for expenses
-        if (t.type === 'expense') {
-            const cat = t.category;
-            if (categoryTotals[cat] !== undefined) {
-                categoryTotals[cat] += parseFloat(t.amount);
-            } else {
-                categoryTotals['others'] = (categoryTotals['others'] || 0) + parseFloat(t.amount);
-            }
-        }
-    });
-
-    return {
-        labels: last6Months,
-        incomeMonthly,
-        expenseMonthly,
-        categories: categoryTotals
-    };
-}
-
-// Draw/Redraw Charts
-function initCharts() {
-    const colors = getChartColors();
-    const data = getChartsData();
-
-    // 1. Cashflow Line Chart
-    const cashflowCtx = document.getElementById('cashflow-chart').getContext('2d');
-    
-    // Create Gradients
-    const incGradient = cashflowCtx.createLinearGradient(0, 0, 0, 250);
-    incGradient.addColorStop(0, colors.incomeGradientStart);
-    incGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-
-    const expGradient = cashflowCtx.createLinearGradient(0, 0, 0, 250);
-    expGradient.addColorStop(0, colors.expenseGradientStart);
-    expGradient.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
-
-    cashflowChartInstance = new Chart(cashflowCtx, {
-        type: 'line',
-        data: {
-            labels: data.labels,
-            datasets: [
-                {
-                    label: 'Ingresos',
-                    data: data.incomeMonthly,
-                    borderColor: colors.income,
-                    borderWidth: 3,
-                    backgroundColor: incGradient,
-                    fill: true,
-                    tension: 0.35,
-                    pointBackgroundColor: colors.income,
-                    pointHoverRadius: 7
-                },
-                {
-                    label: 'Gastos',
-                    data: data.expenseMonthly,
-                    borderColor: colors.expense,
-                    borderWidth: 3,
-                    backgroundColor: expGradient,
-                    fill: true,
-                    tension: 0.35,
-                    pointBackgroundColor: colors.expense,
-                    pointHoverRadius: 7
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    padding: 12,
-                    titleFont: { family: 'Outfit', size: 14, weight: 'bold' },
-                    bodyFont: { family: 'Inter', size: 13 },
-                    callbacks: {
-                        label: function(context) {
-                            return ` ${context.dataset.label}: ${formatCurrency(context.raw)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { color: colors.text, font: { family: 'Inter' } }
-                },
-                y: {
-                    grid: { color: colors.grid },
-                    ticks: {
-                        color: colors.text,
-                        font: { family: 'Inter' },
-                        callback: function(value) {
-                            return '$' + value;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // 2. Category Doughnut Chart
-    const categoryCtx = document.getElementById('category-chart').getContext('2d');
-    
-    // Prepare doughnut data
-    const catLabels = [];
-    const catValues = [];
-    const catColors = [];
-
-    let idx = 0;
-    for (const [key, value] of Object.entries(data.categories)) {
-        if (value > 0) {
-            const config = categoriesConfig.expense.find(c => c.value === key);
-            catLabels.push(config ? config.label : 'Otros');
-            catValues.push(value);
-            catColors.push(colors.accentColors[idx % colors.accentColors.length]);
-            idx++;
-        }
-    }
-
-    // Default if no expense data
-    if (catValues.length === 0) {
-        catLabels.push('Sin gastos');
-        catValues.push(1);
-        catColors.push(colors.text);
-    }
-
-    categoryChartInstance = new Chart(categoryCtx, {
-        type: 'doughnut',
-        data: {
-            labels: catLabels,
-            datasets: [{
-                data: catValues,
-                backgroundColor: catColors,
-                borderWidth: currentTheme === 'dark' ? 2 : 1,
-                borderColor: currentTheme === 'dark' ? '#0f1626' : '#ffffff',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '72%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    padding: 10,
-                    bodyFont: { family: 'Inter', size: 13 },
-                    callbacks: {
-                        label: function(context) {
-                            if (context.label === 'Sin gastos') return ' Sin gastos registrados';
-                            return ` ${context.label}: ${formatCurrency(context.raw)}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Update charts with new data
-function updateCharts() {
-    if (!cashflowChartInstance || !categoryChartInstance) return;
-    
-    const colors = getChartColors();
-    const data = getChartsData();
-
-    // Update Line Chart
-    cashflowChartInstance.data.datasets[0].data = data.incomeMonthly;
-    cashflowChartInstance.data.datasets[1].data = data.expenseMonthly;
-    
-    // Redraw gradients if colors changed
-    const cashflowCtx = document.getElementById('cashflow-chart').getContext('2d');
-    const incGradient = cashflowCtx.createLinearGradient(0, 0, 0, 250);
-    incGradient.addColorStop(0, colors.incomeGradientStart);
-    incGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-    const expGradient = cashflowCtx.createLinearGradient(0, 0, 0, 250);
-    expGradient.addColorStop(0, colors.expenseGradientStart);
-    expGradient.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
-    
-    cashflowChartInstance.data.datasets[0].backgroundColor = incGradient;
-    cashflowChartInstance.data.datasets[1].backgroundColor = expGradient;
-    
-    cashflowChartInstance.data.datasets[0].borderColor = colors.income;
-    cashflowChartInstance.data.datasets[1].borderColor = colors.expense;
-    cashflowChartInstance.options.scales.x.ticks.color = colors.text;
-    cashflowChartInstance.options.scales.y.ticks.color = colors.text;
-    cashflowChartInstance.options.scales.y.grid.color = colors.grid;
-    cashflowChartInstance.update();
-
-    // Update Doughnut Chart
-    const catLabels = [];
-    const catValues = [];
-    const catColors = [];
-
-    let idx = 0;
-    for (const [key, value] of Object.entries(data.categories)) {
-        if (value > 0) {
-            const config = categoriesConfig.expense.find(c => c.value === key);
-            catLabels.push(config ? config.label : 'Otros');
-            catValues.push(value);
-            catColors.push(colors.accentColors[idx % colors.accentColors.length]);
-            idx++;
-        }
-    }
-
-    if (catValues.length === 0) {
-        catLabels.push('Sin gastos');
-        catValues.push(1);
-        catColors.push(colors.text);
-    }
-
-    categoryChartInstance.data.labels = catLabels;
-    categoryChartInstance.data.datasets[0].data = catValues;
-    categoryChartInstance.data.datasets[0].backgroundColor = catColors;
-    categoryChartInstance.data.datasets[0].borderColor = currentTheme === 'dark' ? '#0f1626' : '#ffffff';
-    categoryChartInstance.update();
+function closeProcessModal() {
+    processModal.classList.add('hidden');
+    processForm.reset();
 }
 
 // --- Theme Switching ---
+
 function toggleTheme() {
     currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', currentTheme);
     localStorage.setItem('theme', currentTheme);
-    
-    // Update theme icons
-    if (currentTheme === 'dark') {
-        themeIcon.setAttribute('data-lucide', 'moon');
-    } else {
-        themeIcon.setAttribute('data-lucide', 'sun');
-    }
+    themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'moon' : 'sun');
     lucide.createIcons();
-
-    // Redraw charts with theme specific scales/grids
-    updateCharts();
+    renderTrendChart();
+    renderTipoChart();
+    renderPersonaChart();
+    renderCreditoChart();
 }
 
-// Set Today's Date
+// --- Date & Navigation ---
+
 function setTodayDate() {
     const today = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const localeString = today.toLocaleDateString('es-ES', options);
-    
-    // Capitalize first letter
     currentDateEl.innerText = localeString.charAt(0).toUpperCase() + localeString.slice(1);
 }
 
+const pageTitles = {
+    dashboard: ['Resumen Semanal', 'Control de gastos compartidos y reembolsos pendientes'],
+    gastos: ['Gastos del Hogar', 'Registro y control de gastos compartidos'],
+    creditos: ['Créditos Tasa 0%', 'Control de cuotas y saldo pendiente']
+};
+
+function setupNavigation() {
+    const navItems = document.querySelectorAll('.nav-item[data-page]');
+    const pages = { dashboard: pageDashboardEl, gastos: pageGastosEl, creditos: pageCreditosEl };
+
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const key = item.getAttribute('data-page');
+            navItems.forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            Object.entries(pages).forEach(([k, el]) => el.classList.toggle('hidden', k !== key));
+            pageTitleEl.textContent = pageTitles[key][0];
+            pageSubtitleEl.textContent = pageTitles[key][1];
+        });
+    });
+}
+
+// --- Form Field Toggling ---
+
+function setupQuienToggle(selectEl, wrapperEl) {
+    selectEl.addEventListener('change', () => {
+        wrapperEl.classList.toggle('hidden', selectEl.value !== 'Otro');
+    });
+}
+
 // --- Initializing App ---
+
 async function init() {
-    // 1. Theme Configuration
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
         currentTheme = savedTheme;
         document.documentElement.setAttribute('data-theme', currentTheme);
-        if (currentTheme === 'light') {
-            themeIcon.setAttribute('data-lucide', 'sun');
-        }
+        if (currentTheme === 'light') themeIcon.setAttribute('data-lucide', 'sun');
     }
 
-    // Set form date default to today
-    dateInput.value = new Date().toISOString().split('T')[0];
+    setTodayDate();
+    setupNavigation();
+    setupQuienToggle(gastoQuien, gastoQuienOtroWrapper);
+    setupQuienToggle(creditoQuien, creditoQuienOtroWrapper);
 
-    // 2. Fetch Data from Supabase or Load Samples
-    const { data: txData, error: txError } = await sb.from('transactions').select('*');
-    const { data: goalsData, error: goalsError } = await sb.from('goals').select('*');
+    const { data: gastosData, error: gastosError } = await sb.from('gastos').select('*');
+    const { data: creditosData, error: creditosError } = await sb.from('creditos_tasa_cero').select('*');
 
-    if (txError || goalsError) {
+    if (gastosError || creditosError) {
         showToast('Error al conectar con la base de datos', 'danger');
     }
 
-    if (!txData || txData.length === 0) {
-        await loadSampleData();
-    } else {
-        transactions = txData.map(t => ({ ...t, amount: parseFloat(t.amount) }));
-        goals = (goalsData || []).map(g => ({ ...g, target: parseFloat(g.target), current: parseFloat(g.current) }));
-    }
+    gastos = (gastosData || []).map(g => ({
+        ...g,
+        monto: parseFloat(g.monto),
+        monto_crc: parseFloat(g.monto_crc),
+        porcentaje_reembolso: parseFloat(g.porcentaje_reembolso)
+    }));
 
-    // Populate default categories
-    populateCategories('expense'); // expense radio is checked by default
-    
-    // Set headers
-    setTodayDate();
+    creditos = (creditosData || []).map(c => ({
+        ...c,
+        monto_original: parseFloat(c.monto_original),
+        monto_actual: parseFloat(c.monto_actual),
+        cuota_mensual: parseFloat(c.cuota_mensual)
+    }));
 
-    // Calculate figures
-    calculateKPIs();
-    
-    // Render templates
-    renderTransactions();
-    renderGoals();
-
-    // Load Charts
-    initCharts();
-
-    // Create icons globally
+    renderAll();
+    renderCreditos();
     lucide.createIcons();
 }
 
 // --- Event Listeners ---
 
-// Type Toggle (Expense / Income)
-typeExpenseRadio.addEventListener('change', () => {
-    populateCategories('expense');
-});
+themeBtn.addEventListener('click', toggleTheme);
 
-typeIncomeRadio.addEventListener('change', () => {
-    populateCategories('income');
-});
-
-// Transaction Form Submit
-transactionForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const amountVal = parseFloat(amountInput.value);
-    const categoryVal = categorySelect.value;
-    const dateVal = dateInput.value;
-    const descVal = descInput.value.trim();
-    const typeVal = typeExpenseRadio.checked ? 'expense' : 'income';
-
-    if (isNaN(amountVal) || amountVal <= 0) {
-        showToast('Por favor introduce un monto válido', 'danger');
-        return;
-    }
-
-    // Add new Transaction to state
-    const newTx = {
-        id: Date.now().toString(),
-        type: typeVal,
-        amount: amountVal,
-        category: categoryVal,
-        date: dateVal,
-        description: descVal
-    };
-
-    const { error } = await sb.from('transactions').insert(newTx);
-    if (error) {
-        showToast('Error al registrar la transacción', 'danger');
-        return;
-    }
-
-    transactions.push(newTx);
-    calculateKPIs();
-    renderTransactions();
-    updateCharts();
-
-    // Reset Form
-    transactionForm.reset();
-    dateInput.value = new Date().toISOString().split('T')[0];
-    if (typeVal === 'expense') {
-        typeExpenseRadio.checked = true;
-        populateCategories('expense');
-    } else {
-        typeIncomeRadio.checked = true;
-        populateCategories('income');
-    }
-
-    showToast('Transacción registrada con éxito', 'success');
-});
-
-// Search input keyup
-searchInput.addEventListener('input', () => {
-    renderTransactions();
-});
-
-// Filter Buttons Click
-filterBtns.forEach(btn => {
+document.querySelectorAll('#trend-range-toggle .filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#trend-range-toggle .filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        activeFilter = btn.getAttribute('data-filter');
-        renderTransactions();
+        trendRange = btn.getAttribute('data-range');
+        renderTrendChart();
     });
 });
 
-// Theme button click
-themeBtn.addEventListener('click', toggleTheme);
-
-// Goal Form Toggle
-btnAddGoal.addEventListener('click', () => {
-    goalForm.classList.toggle('hidden');
+document.querySelectorAll('#gasto-estado-filter .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#gasto-estado-filter .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        gastoActiveFilter = btn.getAttribute('data-filter');
+        renderGastosList();
+    });
 });
 
-btnCancelGoal.addEventListener('click', () => {
-    goalForm.classList.add('hidden');
-    goalForm.reset();
+gastoSearchInput.addEventListener('input', renderGastosList);
+
+gastoMoneda.addEventListener('change', () => {
+    gastoCurrencySymbol.textContent = gastoMoneda.value === 'USD' ? '$' : '₡';
 });
 
-// Goal Form Submit
-goalForm.addEventListener('submit', async (e) => {
+gastoCuenta.addEventListener('change', () => {
+    gastoPctWrapper.style.display = gastoCuenta.value === 'DyD' ? 'none' : 'flex';
+});
+
+btnProcessAll.addEventListener('click', () => {
+    const pendingIds = gastos.filter(g => g.estado === 'Pendiente').map(g => g.id);
+    if (pendingIds.length === 0) {
+        showToast('No hay gastos pendientes', 'info');
+        return;
+    }
+    openProcessModal(pendingIds, `Procesar ${pendingIds.length} gasto(s) pendiente(s)`);
+});
+
+btnCancelProcess.addEventListener('click', closeProcessModal);
+
+processForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const name = document.getElementById('goal-name').value.trim();
-    const target = parseFloat(document.getElementById('goal-target').value);
-    const current = parseFloat(document.getElementById('goal-current').value) || 0;
+    const usuario = processUsuario.value;
+    const detalle = processDetalle.value.trim();
+    const fechaProceso = new Date().toISOString();
 
-    if (!name || isNaN(target) || target <= 0 || current < 0) {
-        showToast('Datos de meta inválidos', 'danger');
+    const { error } = await sb.from('gastos').update({
+        estado: 'Procesado',
+        procesado_por: usuario,
+        procesado_fecha: fechaProceso,
+        procesado_detalle: detalle || null
+    }).in('id', processTargetIds);
+
+    if (error) {
+        showToast('Error al procesar el/los gasto(s)', 'danger');
         return;
     }
 
-    const newGoal = {
-        id: Date.now().toString(),
-        name,
-        target,
-        current: Math.min(current, target)
+    gastos.forEach(g => {
+        if (processTargetIds.includes(g.id)) {
+            g.estado = 'Procesado';
+            g.procesado_por = usuario;
+            g.procesado_fecha = fechaProceso;
+            g.procesado_detalle = detalle || null;
+        }
+    });
+
+    closeProcessModal();
+    renderAll();
+    showToast('Gasto(s) procesado(s) con éxito', 'success');
+});
+
+gastoForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const moneda = gastoMoneda.value;
+    const monto = parseFloat(gastoMonto.value);
+    const tipo = gastoTipo.value;
+    const detalle = gastoDetalle.value.trim();
+    const cuenta = gastoCuenta.value;
+    const pct = cuenta === 'DyD' ? 0 : (parseFloat(gastoPct.value) || 0);
+
+    let realizadoPor = gastoQuien.value;
+    if (realizadoPor === 'Otro') {
+        realizadoPor = gastoQuienOtro.value.trim();
+        if (!realizadoPor) {
+            showToast('Indica el nombre de la persona', 'danger');
+            return;
+        }
+    }
+
+    if (isNaN(monto) || monto <= 0 || !detalle) {
+        showToast('Completa todos los campos correctamente', 'danger');
+        return;
+    }
+
+    const montoCrc = moneda === 'USD' ? monto * EXCHANGE_RATE : monto;
+
+    const nuevoGasto = {
+        moneda, monto, monto_crc: montoCrc, tipo, detalle,
+        realizado_por: realizadoPor, cuenta, porcentaje_reembolso: pct
     };
 
-    const { error } = await sb.from('goals').insert(newGoal);
+    const { data, error } = await sb.from('gastos').insert(nuevoGasto).select().single();
     if (error) {
-        showToast('Error al crear la meta', 'danger');
+        showToast('Error al registrar el gasto', 'danger');
         return;
     }
 
-    goals.push(newGoal);
-    renderGoals();
+    gastos.unshift({
+        ...data,
+        monto: parseFloat(data.monto),
+        monto_crc: parseFloat(data.monto_crc),
+        porcentaje_reembolso: parseFloat(data.porcentaje_reembolso)
+    });
 
-    goalForm.reset();
-    goalForm.classList.add('hidden');
-    showToast(`Meta "${name}" creada con éxito`, 'success');
+    renderAll();
+
+    gastoForm.reset();
+    gastoMoneda.value = 'CRC';
+    gastoCurrencySymbol.textContent = '₡';
+    gastoQuienOtroWrapper.classList.add('hidden');
+    gastoPct.value = 50;
+    gastoPctWrapper.style.display = 'flex';
+
+    showToast('Gasto registrado con éxito', 'success');
+});
+
+creditoForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const moneda = creditoMoneda.value;
+    const montoOriginal = parseFloat(creditoMontoOriginal.value);
+    const meses = parseInt(creditoMeses.value, 10);
+    const tipo = creditoTipo.value;
+    const detalle = creditoDetalle.value.trim();
+    const cuenta = creditoCuenta.value;
+
+    let realizadoPor = creditoQuien.value;
+    if (realizadoPor === 'Otro') {
+        realizadoPor = creditoQuienOtro.value.trim();
+        if (!realizadoPor) {
+            showToast('Indica el nombre de la persona', 'danger');
+            return;
+        }
+    }
+
+    if (isNaN(montoOriginal) || montoOriginal <= 0 || isNaN(meses) || meses <= 0 || !detalle) {
+        showToast('Completa todos los campos correctamente', 'danger');
+        return;
+    }
+
+    const cuotaMensual = montoOriginal / meses;
+
+    const nuevoCredito = {
+        moneda, monto_original: montoOriginal, monto_actual: montoOriginal,
+        cuota_mensual: cuotaMensual, meses_totales: meses, meses_pagados: 0,
+        tipo, detalle, realizado_por: realizadoPor, cuenta
+    };
+
+    const { data, error } = await sb.from('creditos_tasa_cero').insert(nuevoCredito).select().single();
+    if (error) {
+        showToast('Error al registrar el crédito', 'danger');
+        return;
+    }
+
+    creditos.unshift({
+        ...data,
+        monto_original: parseFloat(data.monto_original),
+        monto_actual: parseFloat(data.monto_actual),
+        cuota_mensual: parseFloat(data.cuota_mensual)
+    });
+
+    renderCreditos();
+
+    creditoForm.reset();
+    creditoMoneda.value = 'CRC';
+    creditoQuienOtroWrapper.classList.add('hidden');
+
+    showToast('Crédito registrado con éxito', 'success');
 });
 
 // Start the application
