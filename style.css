@@ -1048,18 +1048,20 @@ body {
 
 .currency-symbol {
     position: absolute;
-    left: 1.25rem;
+    left: 1rem;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: var(--text-muted);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.amount-input-wrapper input {
+    padding-left: 2.8rem;
     font-family: var(--font-heading);
     font-weight: 700;
     font-size: 1.5rem;
-    color: var(--text-muted);
-}
-
-#amount-input {
-    padding-left: 2.5rem;
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 1.65rem;
     color: var(--text-primary);
 }
 
@@ -1539,7 +1541,12 @@ body {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
+    .search-box {
+        flex: 0 1 auto;
+        max-width: 100%;
+    }
+
     .search-box input {
         width: 100%;
     }
@@ -1555,5 +1562,20 @@ body {
     .filter-btn {
         flex-grow: 1;
         text-align: center;
+    }
+
+    .transaction-item {
+        flex-wrap: wrap;
+        row-gap: 0.6rem;
+    }
+
+    .transaction-left {
+        flex: 1 1 100%;
+    }
+
+    .transaction-right {
+        flex: 1 1 100%;
+        justify-content: space-between;
+        padding-left: calc(38px + 1rem); /* align with text above the icon */
     }
 }
