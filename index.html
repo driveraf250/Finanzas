@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas Daniela - Dashboard de Control de Gastos e Ingresos</title>
+    <meta name="description" content="Gestiona tus ingresos, gastos y metas financieras de manera sencilla y con gráficos interactivos modernos.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <h1>Finanzas Daniela</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" id="nav-dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#section-transactions" class="nav-item" id="nav-transactions">
+                    <i data-lucide="arrow-left-right"></i>
+                    <span>Transacciones</span>
+                </a>
+                <a href="#section-goals" class="nav-item" id="nav-goals">
+                    <i data-lucide="target"></i>
+                    <span>Metas</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">D</div>
+                    <div class="user-info">
+                        <span class="user-name">Daniela</span>
+                        <span class="user-role">Administradora</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title">
+                    <span class="date-today" id="current-date">Cargando fecha...</span>
+                    <h2>¡Hola, Daniela!</h2>
+                    <p class="subtitle">Aquí tienes el resumen de tus finanzas para hoy.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="theme-toggle" id="theme-btn" aria-label="Cambiar tema">
+                        <i data-lucide="moon" id="theme-icon"></i>
+                    </button>
+                    <button class="btn-primary" id="btn-quick-transaction" onclick="document.getElementById('amount-input').focus();">
+                        <i data-lucide="plus"></i>
+                        <span>Nueva Transacción</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Cards Grid: Stats Summary -->
+            <section class="stats-grid">
+                <!-- Card 1: Balance -->
+                <div class="stat-card balance-card">
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="wallet"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Saldo General</span>
+                        <h3 class="stat-value" id="total-balance">$0.00</h3>
+                        <span class="stat-trend trend-neutral" id="balance-trend">
+                            <i data-lucide="activity"></i> En balance
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Ingresos -->
+                <div class="stat-card income-card">
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Ingresos</span>
+                        <h3 class="stat-value text-success" id="total-income">$0.00</h3>
+                        <span class="stat-trend trend-up" id="income-percentage">
+                            <i data-lucide="arrow-up-right"></i> +0% este mes
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Gastos -->
+                <div class="stat-card expense-card">
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="trending-down"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Gastos</span>
+                        <h3 class="stat-value text-danger" id="total-expense">$0.00</h3>
+                        <span class="stat-trend trend-down" id="expense-percentage">
+                            <i data-lucide="arrow-down-right"></i> 0% del ingreso
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Ahorro -->
+                <div class="stat-card savings-card">
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="piggy-bank"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Tasa de Ahorro</span>
+                        <h3 class="stat-value text-primary" id="savings-rate">0%</h3>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="savings-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <!-- Chart 1: Cash Flow Line Chart -->
+                <div class="chart-card large-chart">
+                    <div class="chart-header">
+                        <h4>Flujo de Caja Mensual</h4>
+                        <div class="chart-actions">
+                            <span class="chart-legend-item"><span class="legend-color bg-success"></span>Ingresos</span>
+                            <span class="chart-legend-item"><span class="legend-color bg-danger"></span>Gastos</span>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="cashflow-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Category Doughnut Chart -->
+                <div class="chart-card small-chart">
+                    <div class="chart-header">
+                        <h4>Distribución de Gastos</h4>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="category-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Split Section (Form & Transactions) -->
+            <div class="split-section">
+                <!-- Column Left: Transactions History -->
+                <section class="content-panel transactions-panel" id="section-transactions">
+                    <div class="panel-header">
+                        <div class="panel-title-area">
+                            <h4>Historial de Transacciones</h4>
+                            <p class="panel-subtitle">Lista detallada de tus movimientos financieros</p>
+                        </div>
+                        <div class="panel-filters">
+                            <div class="search-box">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-input" placeholder="Buscar transacción...">
+                            </div>
+                            <div class="filter-buttons">
+                                <button class="filter-btn active" data-filter="all">Todos</button>
+                                <button class="filter-btn" data-filter="income">Ingresos</button>
+                                <button class="filter-btn" data-filter="expense">Gastos</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="transactions-list-wrapper">
+                        <ul class="transactions-list" id="transactions-list">
+                            <!-- Items will be generated dynamically -->
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Column Right: Form & Savings Goals -->
+                <div class="right-column">
+                    <!-- Form: Add Transaction -->
+                    <section class="content-panel form-panel">
+                        <div class="panel-header">
+                            <h4>Nueva Transacción</h4>
+                        </div>
+                        <form id="transaction-form" class="transaction-form">
+                            <!-- Tab/Toggle for Type -->
+                            <div class="type-toggle-wrapper">
+                                <input type="radio" id="type-expense" name="transaction-type" value="expense" checked>
+                                <label for="type-expense" class="type-label expense-label">
+                                    <i data-lucide="minus-circle"></i> Gasto
+                                </label>
+
+                                <input type="radio" id="type-income" name="transaction-type" value="income">
+                                <label for="type-income" class="type-label income-label">
+                                    <i data-lucide="plus-circle"></i> Ingreso
+                                </label>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group amount-group">
+                                    <label for="amount-input">Monto ($)</label>
+                                    <div class="amount-input-wrapper">
+                                        <span class="currency-symbol">$</span>
+                                        <input type="number" id="amount-input" step="0.01" min="0.01" required placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="category-select">Categoría</label>
+                                    <select id="category-select" required>
+                                        <!-- Categories will depend on type and will be updated dynamically -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="date-input">Fecha</label>
+                                    <input type="date" id="date-input" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="desc-input">Descripción</label>
+                                <input type="text" id="desc-input" required placeholder="Ej. Supermercado, Alquiler, Salario...">
+                            </div>
+
+                            <button type="submit" class="btn-submit" id="submit-btn">
+                                <i data-lucide="plus"></i> Registrar Transacción
+                            </button>
+                        </form>
+                    </section>
+
+                    <!-- Savings Goals Panel -->
+                    <section class="content-panel goals-panel" id="section-goals">
+                        <div class="panel-header">
+                            <h4>Metas de Ahorro</h4>
+                            <button type="button" class="btn-icon" id="btn-add-goal" title="Nueva Meta" aria-label="Nueva Meta">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Add Goal Mini-Form (Hidden by default) -->
+                        <form id="goal-form" class="goal-form hidden">
+                            <div class="form-group">
+                                <label for="goal-name">Nombre de la Meta</label>
+                                <input type="text" id="goal-name" required placeholder="Ej. Fondo de Emergencia, Viaje...">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="goal-target">Monto Objetivo ($)</label>
+                                    <input type="number" id="goal-target" min="1" required placeholder="1000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="goal-current">Monto Inicial ($)</label>
+                                    <input type="number" id="goal-current" min="0" required placeholder="0" value="0">
+                                </div>
+                            </div>
+                            <div class="goal-form-actions">
+                                <button type="button" class="btn-text" id="btn-cancel-goal">Cancelar</button>
+                                <button type="submit" class="btn-primary btn-sm">Guardar</button>
+                            </div>
+                        </form>
+
+                        <div class="goals-list" id="goals-list">
+                            <!-- Goals will be generated dynamically -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast-notification">
+        <i data-lucide="info" id="toast-icon"></i>
+        <span id="toast-message">Mensaje de notificación</span>
+    </div>
+
+    <!-- JavaScript Application -->
+    <script src="app.js"></script>
+</body>
+</html>
