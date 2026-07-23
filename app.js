@@ -59,6 +59,7 @@ const gastoForm = document.getElementById('gasto-form');
 const gastoMoneda = document.getElementById('gasto-moneda');
 const gastoCurrencySymbol = document.getElementById('gasto-currency-symbol');
 const gastoMonto = document.getElementById('gasto-monto');
+const gastoFecha = document.getElementById('gasto-fecha');
 const gastoTipo = document.getElementById('gasto-tipo');
 const gastoDetalle = document.getElementById('gasto-detalle');
 const gastoQuien = document.getElementById('gasto-quien');
@@ -769,6 +770,7 @@ async function init() {
     }
 
     setTodayDate();
+    gastoFecha.value = new Date().toISOString().split('T')[0];
     setupNavigation();
     setupQuienToggle(gastoQuien, gastoQuienOtroWrapper);
     setupQuienToggle(creditoQuien, creditoQuienOtroWrapper);
@@ -880,6 +882,7 @@ gastoForm.addEventListener('submit', async (e) => {
 
     const moneda = gastoMoneda.value;
     const monto = parseFloat(gastoMonto.value);
+    const fecha = gastoFecha.value;
     const tipo = gastoTipo.value;
     const detalle = gastoDetalle.value.trim();
     const cuenta = gastoCuenta.value;
@@ -894,7 +897,7 @@ gastoForm.addEventListener('submit', async (e) => {
         }
     }
 
-    if (isNaN(monto) || monto <= 0 || !detalle) {
+    if (isNaN(monto) || monto <= 0 || !fecha || !detalle) {
         showToast('Completa todos los campos correctamente', 'danger');
         return;
     }
@@ -902,7 +905,7 @@ gastoForm.addEventListener('submit', async (e) => {
     const montoCrc = moneda === 'USD' ? monto * EXCHANGE_RATE : monto;
 
     const nuevoGasto = {
-        moneda, monto, monto_crc: montoCrc, tipo, detalle,
+        moneda, monto, monto_crc: montoCrc, fecha, tipo, detalle,
         realizado_por: realizadoPor, cuenta, porcentaje_reembolso: pct
     };
 
@@ -924,6 +927,7 @@ gastoForm.addEventListener('submit', async (e) => {
     gastoForm.reset();
     gastoMoneda.value = 'CRC';
     gastoCurrencySymbol.textContent = '₡';
+    gastoFecha.value = new Date().toISOString().split('T')[0];
     gastoQuienOtroWrapper.classList.add('hidden');
     gastoPct.value = 50;
     gastoPctWrapper.style.display = 'flex';
