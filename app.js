@@ -14,6 +14,8 @@ const tiposConfig = {
     'Transporte': { icon: 'car', class: 'cat-transport' },
     'Viaje': { icon: 'plane', class: 'cat-viaje' },
     'Gasolina': { icon: 'fuel', class: 'cat-gasolina' },
+    'Regalos': { icon: 'gift', class: 'cat-regalos' },
+    'Paseo': { icon: 'ferris-wheel', class: 'cat-paseo' },
     'Otro': { icon: 'help-circle', class: 'cat-others' }
 };
 const colorPalette = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#f43f5e'];
