@@ -20,8 +20,11 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="brand">
                 <div class="brand-logo">
                     <i data-lucide="home"></i>
@@ -63,6 +66,9 @@
                     <p class="subtitle" id="page-subtitle">Control de gastos compartidos y reembolsos pendientes</p>
                 </div>
                 <div class="header-actions">
+                    <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú">
+                        <i data-lucide="menu"></i>
+                    </button>
                     <button class="theme-toggle" id="theme-btn" aria-label="Cambiar tema">
                         <i data-lucide="moon" id="theme-icon"></i>
                     </button>

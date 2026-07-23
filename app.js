@@ -39,6 +39,9 @@ const pageTitleEl = document.getElementById('page-title');
 const pageSubtitleEl = document.getElementById('page-subtitle');
 const themeBtn = document.getElementById('theme-btn');
 const themeIcon = document.getElementById('theme-icon');
+const menuToggleBtn = document.getElementById('menu-toggle');
+const sidebarEl = document.getElementById('sidebar');
+const sidebarOverlayEl = document.getElementById('sidebar-overlay');
 
 const pageDashboardEl = document.getElementById('page-dashboard');
 const pageGastosEl = document.getElementById('page-gastos');
@@ -747,8 +750,19 @@ function setupNavigation() {
             Object.entries(pages).forEach(([k, el]) => el.classList.toggle('hidden', k !== key));
             pageTitleEl.textContent = pageTitles[key][0];
             pageSubtitleEl.textContent = pageTitles[key][1];
+            closeMobileMenu();
         });
     });
+}
+
+function openMobileMenu() {
+    sidebarEl.classList.add('open');
+    sidebarOverlayEl.classList.add('open');
+}
+
+function closeMobileMenu() {
+    sidebarEl.classList.remove('open');
+    sidebarOverlayEl.classList.remove('open');
 }
 
 // --- Form Field Toggling ---
@@ -803,6 +817,8 @@ async function init() {
 // --- Event Listeners ---
 
 themeBtn.addEventListener('click', toggleTheme);
+menuToggleBtn.addEventListener('click', openMobileMenu);
+sidebarOverlayEl.addEventListener('click', closeMobileMenu);
 
 document.querySelectorAll('#trend-range-toggle .filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
