@@ -20,10 +20,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Mobile Sidebar Overlay -->
-        <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-        <!-- Sidebar Navigation -->
+        <!-- Sidebar Navigation (desktop) -->
         <aside class="sidebar" id="sidebar">
             <div class="brand">
                 <div class="brand-logo">
@@ -66,9 +63,6 @@
                     <p class="subtitle" id="page-subtitle">Control de gastos compartidos y reembolsos pendientes</p>
                 </div>
                 <div class="header-actions">
-                    <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú">
-                        <i data-lucide="menu"></i>
-                    </button>
                     <button class="theme-toggle" id="theme-btn" aria-label="Cambiar tema">
                         <i data-lucide="moon" id="theme-icon"></i>
                     </button>
@@ -386,6 +380,22 @@
                 </div>
             </div>
         </main>
+
+        <!-- Bottom Tab Navigation (mobile) -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <a href="#" class="bottom-nav-item active" data-page="dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="bottom-nav-item" data-page="gastos">
+                <i data-lucide="receipt"></i>
+                <span>Gastos</span>
+            </a>
+            <a href="#" class="bottom-nav-item" data-page="creditos">
+                <i data-lucide="credit-card"></i>
+                <span>Créditos</span>
+            </a>
+        </nav>
     </div>
 
     <!-- Process Pending Modal -->

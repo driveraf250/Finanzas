@@ -245,6 +245,7 @@ body {
 .main-content {
     margin-left: 280px;
     flex-grow: 1;
+    min-width: 0;
     padding: 2.5rem;
     min-height: 100vh;
     display: flex;
@@ -407,6 +408,7 @@ body {
     overflow: hidden;
     transition: all var(--transition-normal);
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    min-width: 0;
 }
 
 .stat-card::before {
@@ -455,6 +457,7 @@ body {
     flex-direction: column;
     gap: 0.25rem;
     flex-grow: 1;
+    min-width: 0;
 }
 
 .stat-label {
@@ -835,7 +838,8 @@ body {
 .transaction-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     font-size: 0.75rem;
     color: var(--text-muted);
 }
@@ -1412,31 +1416,41 @@ body {
     color: var(--text-muted);
 }
 
-/* Mobile Menu Toggle & Overlay */
-.menu-toggle {
+/* Bottom Tab Navigation (mobile) */
+.bottom-nav {
     display: none;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    width: 44px;
-    height: 44px;
-    border-radius: var(--border-radius-sm);
+}
+
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
+    gap: 0.3rem;
+    flex: 1;
+    padding: 0.5rem 0.25rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition: color var(--transition-fast);
+    min-width: 0;
 }
 
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 90;
+.bottom-nav-item i {
+    width: 22px;
+    height: 22px;
 }
 
-.sidebar-overlay.open {
-    display: block;
+.bottom-nav-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.bottom-nav-item.active {
+    color: var(--color-accent);
 }
 
 /* ==========================================================================
@@ -1459,23 +1473,27 @@ body {
 
 @media (max-width: 768px) {
     .sidebar {
-        transform: translateX(-100%);
-        width: 240px;
-        z-index: 100;
+        display: none;
     }
 
-    .sidebar.open {
-        transform: translateX(0);
-    }
-
-    .menu-toggle {
+    .bottom-nav {
         display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-sidebar);
+        border-top: 1px solid var(--border-color);
+        padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+        z-index: 100;
     }
 
     .main-content {
         margin-left: 0;
         padding: 1.5rem;
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
         gap: 1.5rem;
+        min-width: 0;
     }
 
     .stats-grid {
@@ -1484,28 +1502,20 @@ body {
     }
 
     .main-header {
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        align-items: flex-start;
         gap: 1rem;
-        flex-wrap: wrap;
     }
 
-    .header-title {
-        order: 2;
-        width: 100%;
+    .header-title,
+    .header-actions {
         min-width: 0;
+        max-width: 100%;
     }
 
     .header-actions {
-        order: 1;
-        margin-left: auto;
-        display: flex;
-        gap: 0.75rem;
-    }
-
-    .btn-primary {
-        flex-grow: 1;
-        justify-content: center;
+        width: 100%;
+        justify-content: flex-end;
     }
 }
 

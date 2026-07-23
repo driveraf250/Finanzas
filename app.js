@@ -39,9 +39,6 @@ const pageTitleEl = document.getElementById('page-title');
 const pageSubtitleEl = document.getElementById('page-subtitle');
 const themeBtn = document.getElementById('theme-btn');
 const themeIcon = document.getElementById('theme-icon');
-const menuToggleBtn = document.getElementById('menu-toggle');
-const sidebarEl = document.getElementById('sidebar');
-const sidebarOverlayEl = document.getElementById('sidebar-overlay');
 
 const pageDashboardEl = document.getElementById('page-dashboard');
 const pageGastosEl = document.getElementById('page-gastos');
@@ -738,31 +735,19 @@ const pageTitles = {
 };
 
 function setupNavigation() {
-    const navItems = document.querySelectorAll('.nav-item[data-page]');
+    const navItems = document.querySelectorAll('.nav-item[data-page], .bottom-nav-item[data-page]');
     const pages = { dashboard: pageDashboardEl, gastos: pageGastosEl, creditos: pageCreditosEl };
 
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const key = item.getAttribute('data-page');
-            navItems.forEach(n => n.classList.remove('active'));
-            item.classList.add('active');
+            navItems.forEach(n => n.classList.toggle('active', n.getAttribute('data-page') === key));
             Object.entries(pages).forEach(([k, el]) => el.classList.toggle('hidden', k !== key));
             pageTitleEl.textContent = pageTitles[key][0];
             pageSubtitleEl.textContent = pageTitles[key][1];
-            closeMobileMenu();
         });
     });
-}
-
-function openMobileMenu() {
-    sidebarEl.classList.add('open');
-    sidebarOverlayEl.classList.add('open');
-}
-
-function closeMobileMenu() {
-    sidebarEl.classList.remove('open');
-    sidebarOverlayEl.classList.remove('open');
 }
 
 // --- Form Field Toggling ---
@@ -817,8 +802,6 @@ async function init() {
 // --- Event Listeners ---
 
 themeBtn.addEventListener('click', toggleTheme);
-menuToggleBtn.addEventListener('click', openMobileMenu);
-sidebarOverlayEl.addEventListener('click', closeMobileMenu);
 
 document.querySelectorAll('#trend-range-toggle .filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
