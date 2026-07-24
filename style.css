@@ -1176,17 +1176,9 @@ body {
 }
 
 .goal-actions-overlay {
-    position: absolute;
-    top: 8px;
-    right: 8px;
     display: flex;
+    justify-content: flex-end;
     gap: 4px;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.goal-item:hover .goal-actions-overlay {
-    opacity: 1;
 }
 
 .goal-action-btn {

@@ -34,6 +34,8 @@ let trendChartInstance = null;
 let tipoChartInstance = null;
 let personaChartInstance = null;
 let creditoChartInstance = null;
+let creditoPersonaChartInstance = null;
+let creditoProgresoChartInstance = null;
 
 // --- DOM Elements ---
 const currentDateEl = document.getElementById('current-date');
@@ -72,6 +74,12 @@ const gastoPctWrapper = document.getElementById('gasto-pct-wrapper');
 const gastoPct = document.getElementById('gasto-pct');
 
 const creditosListEl = document.getElementById('creditos-list');
+const kpiCreditoTotalActualEl = document.getElementById('kpi-credito-total-actual');
+const kpiCreditoCuotaTotalEl = document.getElementById('kpi-credito-cuota-total');
+const kpiCreditoPagadoEl = document.getElementById('kpi-credito-pagado');
+const kpiCreditoPagadoPctEl = document.getElementById('kpi-credito-pagado-pct');
+const kpiCreditoFechaFinEl = document.getElementById('kpi-credito-fecha-fin');
+const kpiCreditoMesesRestantesEl = document.getElementById('kpi-credito-meses-restantes');
 const creditoForm = document.getElementById('credito-form');
 const creditoMoneda = document.getElementById('credito-moneda');
 const creditoMontoOriginal = document.getElementById('credito-monto-original');
@@ -117,6 +125,10 @@ function formatCRC(amount) {
 
 function formatUSD(amount) {
     return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+}
+
+function toCRC(monto, moneda) {
+    return moneda === 'USD' ? monto * EXCHANGE_RATE : monto;
 }
 
 function formatDateString(dateStr) {
@@ -576,6 +588,135 @@ function renderGastosList() {
     lucide.createIcons();
 }
 
+function renderCreditosKPIs() {
+    let totalActual = 0;
+    let totalOriginal = 0;
+    let totalCuotaMensual = 0;
+    let maxMesesRestantes = 0;
+    let activos = 0;
+
+    creditos.forEach(c => {
+        totalActual += toCRC(c.monto_actual, c.moneda);
+        totalOriginal += toCRC(c.monto_original, c.moneda);
+        const mesesRestantes = c.meses_totales - c.meses_pagados;
+        if (mesesRestantes > 0) {
+            totalCuotaMensual += toCRC(c.cuota_mensual, c.moneda);
+            activos++;
+            if (mesesRestantes > maxMesesRestantes) maxMesesRestantes = mesesRestantes;
+        }
+    });
+
+    const totalPagado = Math.max(0, totalOriginal - totalActual);
+    const pctPagado = totalOriginal > 0 ? Math.round((totalPagado / totalOriginal) * 100) : 0;
+
+    kpiCreditoTotalActualEl.textContent = formatCRC(totalActual);
+    kpiCreditoCuotaTotalEl.textContent = formatCRC(totalCuotaMensual);
+    kpiCreditoPagadoEl.textContent = formatCRC(totalPagado);
+    kpiCreditoPagadoPctEl.textContent = `${pctPagado}% del total original`;
+
+    if (activos === 0) {
+        kpiCreditoFechaFinEl.textContent = '—';
+        kpiCreditoMesesRestantesEl.textContent = creditos.length === 0 ? 'Sin créditos registrados' : 'Todos los créditos están al día';
+    } else {
+        const fechaFin = new Date();
+        fechaFin.setMonth(fechaFin.getMonth() + maxMesesRestantes);
+        kpiCreditoFechaFinEl.textContent = fechaFin.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+        kpiCreditoMesesRestantesEl.textContent = `${maxMesesRestantes} mes(es) restantes al ritmo actual`;
+    }
+}
+
+function renderCreditoPersonaChart() {
+    const totals = {};
+    creditos
+        .filter(c => c.monto_actual > 0)
+        .forEach(c => { totals[c.realizado_por] = (totals[c.realizado_por] || 0) + toCRC(c.monto_actual, c.moneda); });
+
+    let labels = Object.keys(totals);
+    let data = Object.values(totals);
+    let colors = labels.map(getPersonaColor);
+
+    if (labels.length === 0) {
+        labels = ['Sin deuda pendiente'];
+        data = [1];
+        colors = ['#64748b'];
+    }
+
+    const borderColor = currentTheme === 'dark' ? '#0f1626' : '#ffffff';
+
+    if (creditoPersonaChartInstance) {
+        creditoPersonaChartInstance.data.labels = labels;
+        creditoPersonaChartInstance.data.datasets[0].data = data;
+        creditoPersonaChartInstance.data.datasets[0].backgroundColor = colors;
+        creditoPersonaChartInstance.data.datasets[0].borderColor = borderColor;
+        creditoPersonaChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('credito-persona-chart').getContext('2d');
+    creditoPersonaChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor, hoverOffset: 6 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: getChartColors().text, boxWidth: 10, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ctx.label === 'Sin deuda pendiente' ? ' Sin deuda pendiente' : ` ${ctx.label}: ${formatCRC(ctx.raw)}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderCreditoProgresoChart() {
+    const labels = creditos.map(c => c.detalle.length > 18 ? c.detalle.slice(0, 18) + '…' : c.detalle);
+    const data = creditos.map(c => Math.min(100, Math.round((c.meses_pagados / c.meses_totales) * 100)));
+    const colors = creditos.map(c => (c.meses_pagados >= c.meses_totales ? '#10b981' : '#8b5cf6'));
+
+    const colorsTheme = getChartColors();
+
+    if (creditoProgresoChartInstance) {
+        creditoProgresoChartInstance.data.labels = labels;
+        creditoProgresoChartInstance.data.datasets[0].data = data;
+        creditoProgresoChartInstance.data.datasets[0].backgroundColor = colors;
+        creditoProgresoChartInstance.options.scales.x.ticks.color = colorsTheme.text;
+        creditoProgresoChartInstance.options.scales.y.ticks.color = colorsTheme.text;
+        creditoProgresoChartInstance.options.scales.x.grid.color = colorsTheme.grid;
+        creditoProgresoChartInstance.update();
+        return;
+    }
+
+    const ctx = document.getElementById('credito-progreso-chart').getContext('2d');
+    creditoProgresoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, barThickness: 20 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw}% pagado` } }
+            },
+            scales: {
+                x: { min: 0, max: 100, grid: { color: colorsTheme.grid }, ticks: { color: colorsTheme.text, callback: (v) => v + '%' } },
+                y: { grid: { display: false }, ticks: { color: colorsTheme.text } }
+            }
+        }
+    });
+}
+
+function renderCreditosPage() {
+    renderCreditosKPIs();
+    renderCreditoPersonaChart();
+    renderCreditoProgresoChart();
+    renderCreditos();
+}
+
 function renderCreditos() {
     creditosListEl.innerHTML = '';
 
@@ -618,6 +759,12 @@ function renderCreditos() {
             <div class="goal-actions-overlay">
                 <button class="goal-action-btn add-funds-btn" title="Marcar mes pagado" onclick="marcarMesPagado('${c.id}')">
                     <i data-lucide="calendar-check" style="width:14px;height:14px;"></i>
+                </button>
+                <button class="goal-action-btn" title="Restar un mes (corregir error)" onclick="restarMesPagado('${c.id}')">
+                    <i data-lucide="calendar-minus" style="width:14px;height:14px;"></i>
+                </button>
+                <button class="goal-action-btn" title="Abonar extra (pagar por adelantado)" onclick="abonarExtraCredito('${c.id}')">
+                    <i data-lucide="coins" style="width:14px;height:14px;"></i>
                 </button>
                 <button class="goal-action-btn delete-goal-btn" title="Eliminar" onclick="eliminarCredito('${c.id}')">
                     <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
@@ -679,8 +826,78 @@ window.marcarMesPagado = async function (id) {
 
     credito.meses_pagados = nuevosMesesPagados;
     credito.monto_actual = nuevoMontoActual;
-    renderCreditos();
+    renderCreditosPage();
     showToast('Mes marcado como pagado', 'success');
+};
+
+window.restarMesPagado = async function (id) {
+    const credito = creditos.find(c => c.id === id);
+    if (!credito) return;
+    if (credito.meses_pagados <= 0) {
+        showToast('Este crédito no tiene meses pagados que restar', 'info');
+        return;
+    }
+
+    const nuevosMesesPagados = credito.meses_pagados - 1;
+    const nuevoMontoActual = Math.min(credito.monto_original, credito.monto_actual + credito.cuota_mensual);
+
+    const { error } = await sb.from('creditos_tasa_cero')
+        .update({ meses_pagados: nuevosMesesPagados, monto_actual: nuevoMontoActual })
+        .eq('id', id);
+
+    if (error) {
+        showToast('Error al actualizar el crédito', 'danger');
+        return;
+    }
+
+    credito.meses_pagados = nuevosMesesPagados;
+    credito.monto_actual = nuevoMontoActual;
+    renderCreditosPage();
+    showToast('Se restó un mes pagado', 'info');
+};
+
+window.abonarExtraCredito = async function (id) {
+    const credito = creditos.find(c => c.id === id);
+    if (!credito) return;
+    if (credito.monto_actual <= 0) {
+        showToast('Este crédito ya está completamente pagado', 'info');
+        return;
+    }
+
+    const montoFormato = credito.moneda === 'USD' ? formatUSD(credito.monto_actual) : formatCRC(credito.monto_actual);
+    const extraStr = prompt(`Saldo pendiente de "${credito.detalle}": ${montoFormato}\n¿Cuánto deseas abonar por adelantado?`);
+    if (extraStr === null) return;
+
+    const extra = parseFloat(extraStr);
+    if (isNaN(extra) || extra <= 0) {
+        showToast('Monto inválido', 'danger');
+        return;
+    }
+
+    const nuevoMontoActual = Math.max(0, credito.monto_actual - extra);
+    const nuevosMesesPagados = Math.min(
+        credito.meses_totales,
+        Math.round((credito.monto_original - nuevoMontoActual) / credito.cuota_mensual)
+    );
+
+    const { error } = await sb.from('creditos_tasa_cero')
+        .update({ meses_pagados: nuevosMesesPagados, monto_actual: nuevoMontoActual })
+        .eq('id', id);
+
+    if (error) {
+        showToast('Error al abonar el extra', 'danger');
+        return;
+    }
+
+    credito.meses_pagados = nuevosMesesPagados;
+    credito.monto_actual = nuevoMontoActual;
+    renderCreditosPage();
+
+    if (nuevoMontoActual <= 0) {
+        showToast(`¡Felicidades! "${credito.detalle}" quedó completamente cancelado`, 'success');
+    } else {
+        showToast('Abono extra aplicado con éxito', 'success');
+    }
 };
 
 window.eliminarCredito = async function (id) {
@@ -691,7 +908,7 @@ window.eliminarCredito = async function (id) {
         return;
     }
     creditos = creditos.filter(c => c.id !== id);
-    renderCreditos();
+    renderCreditosPage();
     showToast('Crédito eliminado', 'info');
 };
 
@@ -720,6 +937,8 @@ function toggleTheme() {
     renderTipoChart();
     renderPersonaChart();
     renderCreditoChart();
+    renderCreditoPersonaChart();
+    renderCreditoProgresoChart();
 }
 
 // --- Date & Navigation ---
@@ -799,7 +1018,7 @@ async function init() {
     }));
 
     renderAll();
-    renderCreditos();
+    renderCreditosPage();
     lucide.createIcons();
 }
 
@@ -982,7 +1201,7 @@ creditoForm.addEventListener('submit', async (e) => {
         cuota_mensual: parseFloat(data.cuota_mensual)
     });
 
-    renderCreditos();
+    renderCreditosPage();
 
     creditoForm.reset();
     creditoMoneda.value = 'CRC';

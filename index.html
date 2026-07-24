@@ -309,6 +309,72 @@
 
             <!-- ================= PAGE: CREDITOS TASA 0% ================= -->
             <div class="page-view hidden" id="page-creditos">
+                <section class="stats-grid">
+                    <div class="stat-card expense-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Adeudado</span>
+                            <h3 class="stat-value text-danger" id="kpi-credito-total-actual">₡0.00</h3>
+                            <span class="stat-trend trend-neutral">Saldo pendiente de todos los créditos</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="calendar-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Cuota Mensual Total</span>
+                            <h3 class="stat-value" id="kpi-credito-cuota-total">₡0.00</h3>
+                            <span class="stat-trend trend-neutral">Compromiso mensual combinado</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card savings-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="trending-down"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Ya Pagado</span>
+                            <h3 class="stat-value text-primary" id="kpi-credito-pagado">₡0.00</h3>
+                            <span class="stat-trend trend-neutral" id="kpi-credito-pagado-pct">0% del total original</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card balance-card">
+                        <div class="stat-icon-wrapper">
+                            <i data-lucide="flag"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Liquidación Estimada</span>
+                            <h3 class="stat-value" id="kpi-credito-fecha-fin">—</h3>
+                            <span class="stat-trend trend-neutral" id="kpi-credito-meses-restantes">Sin créditos activos</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4>Deuda Pendiente por Persona</h4>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="credito-persona-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4>Progreso de Pago por Crédito</h4>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="credito-progreso-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="split-section">
                     <!-- Column Left: List -->
                     <section class="content-panel transactions-panel">
